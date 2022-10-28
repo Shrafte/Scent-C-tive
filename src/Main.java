@@ -1,7 +1,10 @@
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
 
 public class Main {
+    static int LONGPARAMTHRESHOLD = 6;
+    static ArrayList<Smell> SMELLS = new ArrayList<>();
     public static void main(String[] args) throws IOException {
 
         // This must remain unchanged
@@ -23,7 +26,12 @@ public class Main {
         }
 
         // here on downwards is editable for testing purposed
+        longParamHandler(args[0]);
         gotoHandler(args[0]);
+
+        for (Smell smell : SMELLS) {
+            System.out.println(smell.getSmellType());
+        }
     }
 
     private static Smell gotoHandler(String filename) {
@@ -47,6 +55,46 @@ public class Main {
         return new Smell();
     }
 
+    private static void longParamHandler(String filename) {
+        String xpathName = filename + ".xml";
+        String output = "";
+        String function = "";
+        String[] outputParse;
+        int i = 1;
+        do{
+            int paramNum = 0;
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "]/src:parameter_list)\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+                p = builder2.start();
+                p.waitFor();
+                function = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            output = output.replace("\n", "").replace("\r", "");
+            outputParse = output.split("\\s+");
+            i++;
+            if(outputParse.length > 1){
+                char[] outChars = output.toCharArray();
+                for (char outChar : outChars) {
+                    if (outChar == ',' || outChar == ')') {
+                        paramNum++;
+                    }
+                }
+                if(paramNum >= LONGPARAMTHRESHOLD){
+                    SMELLS.add(new Smell("Long Parameter List", function));
+                }
+            }
+
+        } while(outputParse.length > 1);
+    }
 }
 
 class Smell {
@@ -77,9 +125,8 @@ class Smell {
 
     // outputs smell in error format
     public String getSmellType() {
-        String error = new String();
+        String error = smellType + ": \n" + code;
         //TODO error formatting
-
         return error;
     }
 
