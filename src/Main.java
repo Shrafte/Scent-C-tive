@@ -1,7 +1,13 @@
 import java.io.File;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.io.FileNotFoundException;
+import java.lang.ProcessBuilder.Redirect;
+import java.util.Scanner;
 
 public class Main {
+    static int LONGPARAMTHRESHOLD = 6;
+    static ArrayList<Smell> SMELLS = new ArrayList<>();
     public static void main(String[] args) throws IOException {
 
         // This must remain unchanged
@@ -23,7 +29,13 @@ public class Main {
         }
 
         // here on downwards is editable for testing purposed
-        gotoHandler(args[0]);
+        // longParamHandler(args[0]);
+        // gotoHandler(args[0]);
+        longFuncHandler(args[0]);
+
+        for (Smell smell : SMELLS) {
+            System.out.println(smell.getSmellType());
+        }
     }
 
     private static Smell gotoHandler(String filename) {
@@ -47,7 +59,138 @@ public class Main {
         return new Smell();
     }
 
+    private static void longParamHandler(String filename) {
+        String xpathName = filename + ".xml";
+        String output = "";
+        String function = "";
+        String[] outputParse;
+        int i = 1;
+        do{
+            int paramNum = 0;
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "]/src:parameter_list)\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+                p = builder2.start();
+                p.waitFor();
+                function = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            output = output.replace("\n", "").replace("\r", "");
+            outputParse = output.split("\\s+");
+            i++;
+            if(outputParse.length > 1){
+                char[] outChars = output.toCharArray();
+                for (char outChar : outChars) {
+                    if (outChar == ',' || outChar == ')') {
+                        paramNum++;
+                    }
+                }
+                if(paramNum >= LONGPARAMTHRESHOLD){
+                    SMELLS.add(new Smell("Long Parameter List", function));
+                }
+            }
+
+        } while(outputParse.length > 1);
+    }
+
+    private static void longFuncHandler(String filename) {
+        int n = 10;
+        int i = 0;
+        String xpathName = filename + ".xml";
+        String bufferFileName = "buffer.xml";
+        String buffer = "";
+        ArrayList<String> functionList = new ArrayList<String>(n);
+
+
+        File bufferFile = new File(bufferFileName);
+        File functionFile = new File("functions.txt");
+
+        // creating file with all function names
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:function/src:name\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
+        builder2.redirectOutput(functionFile);
+        builder2.redirectError(new File("out.txt"));
+        System.out.println("---------------------");
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+        System.out.println("---------------------");
+
+        // putting all function names into arraylist
+        try {
+            Scanner scan = new Scanner(functionFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                functionList.add(buffer);
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // check if file contains long functions
+        int lineNum, lineAmount, functionFlag, bracketCounter, stopCounting, origLineNum;
+        lineNum = lineAmount = functionFlag = bracketCounter = stopCounting = origLineNum = 0;
+        String origCode = "";
+        try {
+            File origFile = new File(filename);
+            Scanner scan2 = new Scanner(origFile);
+            while (scan2.hasNextLine()) {
+                lineNum++;
+                buffer = scan2.nextLine();
+                for (i = 0; i < functionList.size(); i++) {
+                    if ((buffer.contains(functionList.get(i))) && (buffer.contains("{")) && (functionFlag == 0) && (bracketCounter == 0)) {
+                        functionFlag = 1;
+                        origLineNum = lineNum;
+                        origCode = buffer;
+                        break;
+                    }
+                }
+                if (functionFlag == 1) {
+                    if (buffer.contains("{")) {
+                        bracketCounter++;
+                    }
+                    if (buffer.contains("}")) {
+                        bracketCounter--;
+                    }
+                    lineAmount++;
+                }
+                if (bracketCounter == 0) {
+                    functionFlag = lineAmount = stopCounting = 0;
+                }
+                if ((lineAmount > 20) && (functionFlag == 1) && (bracketCounter > 0) && (stopCounting == 0)) {
+                    SMELLS.add(new Smell(origLineNum, "Long method/function on line " + origLineNum, origCode.trim()));
+                    stopCounting = 1;
+                }
+            }
+        } catch (FileNotFoundException e) {
+            e.printStackTrace();
+        }
+
+
+
+
+    }
+
 }
+
+
+
 
 class Smell {
     int lineNum;
@@ -56,9 +199,9 @@ class Smell {
 
     // default constructor just in case
     public Smell() {
-            lineNum = -1;
-            smellType = "";
-            code = "";
+        lineNum = -1;
+        smellType = "";
+        code = "";
     }
 
     // intended constructor once line numbers are figured out
@@ -77,9 +220,8 @@ class Smell {
 
     // outputs smell in error format
     public String getSmellType() {
-        String error = new String();
+        String error = smellType + ": \n" + code;
         //TODO error formatting
-
         return error;
     }
 
