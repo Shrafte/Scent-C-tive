@@ -23,7 +23,7 @@ public class Main {
         }
 
         // here on downwards is editable for testing purposed
-        gotoHandler(args[0]);
+        magicNumHandler(args[0]);
     }
 
     private static Smell gotoHandler(String filename) {
@@ -47,6 +47,47 @@ public class Main {
         return new Smell();
     }
 
+    private static Smell magicNumHandler(String filename) {
+        System.out.println("Running XPath: Finding Magic Numbers in " + filename + ":");
+        String xpathName = filename + ".xml";
+        String argument;
+        String output = "";
+        String outputParse[];
+        int iterator = 1;
+
+        do {
+            // gets each expression which involves a literal
+            argument = "string(//src:expr_stmt[src:expr[src:literal]][" + iterator + "])";
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", argument, xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.print("IOExcpetion detected");
+            } catch (InterruptedException e) {
+                System.out.print("InterruptedException detected");
+            }
+
+            //cleans the string of newline characters and splits it by space
+            output = output.replace("\n", "").replace("\r", "");
+            outputParse = output.split("\\s+");
+
+            // if outputParse.length > 1, then xpath successfully retrieved a line from the code
+            if(outputParse.length > 1) {
+
+                //if expression statement begins with a variable that is 1 letter long, then it is a
+                //magic numbers case
+                if(outputParse[0].length() == 1 && Character.isLetter(outputParse[0].charAt(0))) {
+                    System.out.println("Magic Number: " + output);
+                }
+            }
+            iterator++;
+        } while(outputParse.length > 1); // checks to see if a line was retrieved from the code. If not, end loop
+
+        return new Smell();
+    }
 }
 
 class Smell {
