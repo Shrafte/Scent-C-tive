@@ -4,9 +4,12 @@ import java.util.ArrayList;
 
 public class Main {
     static int LONGPARAMTHRESHOLD = 6;
+    static int LONGFUNCTIONTHRESHOLD = 50;
+    static boolean[] settings = new boolean[19];
     static ArrayList<Smell> SMELLS = new ArrayList<>();
     public static void main(String[] args) throws IOException {
 
+        settingsHandler(args);
         // This must remain unchanged
         String fullStr = "srcml " + args[0] + " -o " + args[0] + ".xml";
         String[] strArray;
@@ -26,11 +29,142 @@ public class Main {
         }
 
         // here on downwards is editable for testing purposed
-        longParamHandler(args[0]);
-        gotoHandler(args[0]);
+        smellHandler(args);
 
         for (Smell smell : SMELLS) {
             System.out.println(smell.getSmellType());
+        }
+    }
+
+    public static void smellHandler(String[] args){
+        if(settings[0]){                //Dictionary of Symbols
+
+        }
+        if(!settings[1]){                //smell report
+            return;
+        }
+        if(settings[2]){                //Goto statements
+            gotoHandler(args[0]);
+        }
+        if(settings[3]){                //Empty Statements
+
+        }
+        if(settings[4]){                //Magic numbers
+
+        }
+        if(settings[5]){                //Block-less if statements
+
+        }
+        if(settings[6]){                //Block-less loops
+
+        }
+        if(settings[7]){                //Long parameter list
+            longParamHandler(args[0]);
+        }
+        if(settings[8]){                //Long functions
+
+        }
+        if(settings[9]){                //Dead functions
+
+        }
+        if(settings[10]){                //Embedded increment/decrement
+
+        }
+        if(settings[11]){                //Conditional complexity
+
+        }
+        if(settings[12]){               //Security issues
+
+        }
+        if(settings[13]){               //Deep block nesting
+
+        }
+        if(settings[14]){               //Continue statements
+
+        }
+        if(settings[15]){               //Break statements
+
+        }
+        if(settings[16]){               //Bad variable names
+
+        }
+        if(settings[17]){               //Bad function names
+
+        }
+        if(settings[18]){               //Multiple variable declarations on one line
+
+        }
+    }
+
+    public static void settingsHandler(String[] args){
+        for(int i = 0;i<settings.length;i++){
+            settings[i] = true;
+        }
+        for(int i = 0;i<args.length-1;i++){
+            switch(args[i]){
+                case "-g":              //Goto statements
+                    settings[2] = false;
+                    break;
+                case "-e":              //Empty statements
+                    settings[3] = false;
+                    break;
+                case "-m":              //Magic numbers
+                    settings[4] = false;
+                    break;
+                case "-i":              //Block-less if statements
+                    settings[5] = false;
+                    break;
+                case "-l":              //Block-less loops
+                    settings[6] = false;
+                    break;
+                case "-p":              //Long parameter lists          CURRENT BUG: doesn't disable if last argument
+                    if(!(args[i+1].substring(0,1).equals("-"))){
+                        try{
+                            LONGPARAMTHRESHOLD = Integer.parseInt(args[i+1]);
+                        } catch(Exception e){
+                            System.out.println("Couldn't parse long parameter list threshold");
+                            break;
+                        }
+                        break;
+                    }
+                    settings[7] = false;
+                    break;
+                case "-f":              //Long functions                CURRENT BUG: doesn't disable if last argument
+                    if(!args[i+1].substring(0,1).equals("-")){
+                        try{
+                            LONGFUNCTIONTHRESHOLD = Integer.parseInt(args[i+1]);
+                        } catch(Exception e){
+                            System.out.println("Couldn't parse long function threshold");
+                            break;
+                        }
+                        break;
+                    }
+                    settings[8] = false;
+                    break;
+                case "-d":              //Dead functions
+                    settings[9] = false;
+                    break;
+                case "-x":              //Conditional complexity
+                    settings[11] = false;
+                    break;
+                case "-s":              //Security issues
+                    settings[12] = false;
+                    break;
+                case "-c":              //Continue statements
+                    settings[14] = false;
+                    break;
+                case "-b":              //Break statements
+                    settings[15] = false;
+                    break;
+                case "-v":              //Bad variable names
+                    settings[16] = false;
+                    break;
+                case "-n":              //Bad function names
+                    settings[17] = false;
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -40,7 +174,7 @@ public class Main {
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:goto)\"", xpathName);
         builder.redirectOutput(ProcessBuilder.Redirect.INHERIT);
         builder.redirectError(new File("out.txt"));
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -49,7 +183,7 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.print("---------------------");
+        //System.out.print("---------------------");
 
         // outputs nothing right now. Will output stuff after smells are complete
         return new Smell();
