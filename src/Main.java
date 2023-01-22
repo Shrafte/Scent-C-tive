@@ -126,8 +126,9 @@ public class Main {
                             break;
                         }
                         break;
+                    } else {
+                        settings[7] = false;
                     }
-                    settings[7] = false;
                     break;
                 case "-f":              //Long functions                CURRENT BUG: doesn't disable if last argument
                     if(!args[i+1].substring(0,1).equals("-")){
@@ -138,8 +139,9 @@ public class Main {
                             break;
                         }
                         break;
+                    } else {
+                        settings[8] = false;
                     }
-                    settings[8] = false;
                     break;
                 case "-d":              //Dead functions
                     settings[9] = false;
