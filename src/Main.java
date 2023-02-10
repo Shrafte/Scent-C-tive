@@ -1,5 +1,6 @@
 import java.io.File;
 import java.io.IOException;
+import java.sql.SQLOutput;
 import java.util.ArrayList;
 import java.io.FileNotFoundException;
 import java.lang.ProcessBuilder.Redirect;
@@ -31,7 +32,10 @@ public class Main {
         // here on downwards is editable for testing purposed
         // longParamHandler(args[0]);
         // gotoHandler(args[0]);
-        longFuncHandler(args[0]);
+        //longFuncHandler(args[0]);
+        //noBlockLoopIf(args[0]);
+        functionNaming(args[0]);
+       // variableNaming(args[0]);
 
         for (Smell smell : SMELLS) {
             System.out.println(smell.getSmellType());
@@ -93,20 +97,158 @@ public class Main {
                     }
                 }
                 if(paramNum >= LONGPARAMTHRESHOLD){
-                    SMELLS.add(new Smell("Long Parameter List", function));
+                    SMELLS.add(new Smell("Long Parameter List", function.substring(0,function.indexOf("{"))));
                 }
             }
 
         } while(outputParse.length > 1);
     }
 
-    private static void longFuncHandler(String filename) {
-        int n = 10;
+    private static void variableNaming(String fileName) {
         int i = 0;
-        String xpathName = filename + ".xml";
+        String xpathName = fileName + ".xml";
         String bufferFileName = "buffer.xml";
         String buffer = "";
-        ArrayList<String> functionList = new ArrayList<String>(n);
+        ArrayList<String> varList = new ArrayList<String>();
+
+        File bufferFile = new File(bufferFileName);
+        File varFile = new File("variables.txt");
+
+        // creating file with all variable names
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl/src:name\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
+        builder2.redirectOutput(varFile);
+        builder2.redirectError(new File("out.txt"));
+        System.out.println("---------------------");
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+        System.out.println("---------------------");
+
+        // putting all variable names into arraylist
+        try {
+            Scanner scan = new Scanner(varFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                varList.add(buffer);
+            }
+            scan.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // checking variable name for camel case
+        String camelCase = "([a-z]+[A-Z]+\\w+)+";
+        for (i = 0; i < varList.size(); i++) {
+            if (!varList.get(i).matches(camelCase)) {
+                SMELLS.add(new Smell("Non camel case variable", varList.get(i)));
+            }
+        }
+
+        bufferFile.delete();
+        varFile.delete();
+    }
+
+    private static void functionNaming(String fileName) {
+        int i = 0;
+        String xpathName = fileName + ".xml";
+        String bufferFileName = "buffer.xml";
+        String buffer = "";
+        ArrayList<String> functionList = new ArrayList<String>();
+
+        File bufferFile = new File(bufferFileName);
+        File functionFile = new File("functions.txt");
+
+        // creating file with all function names
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:function/src:name\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
+        builder2.redirectOutput(functionFile);
+        builder2.redirectError(new File("out.txt"));
+        System.out.println("---------------------");
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+        System.out.println("---------------------");
+
+        // putting all function names into arraylist
+        try {
+            Scanner scan = new Scanner(functionFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                functionList.add(buffer);
+            }
+            scan.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // checking function name for camel case
+        String camelCase = "([a-z]+[A-Z]+\\w+)+";
+        for (i = 0; i < functionList.size(); i++) {
+            if (!functionList.get(i).matches(camelCase) && !functionList.get(i).equals("main")) {
+                SMELLS.add(new Smell("Non camel case function", functionList.get(i)));
+            }
+        }
+
+        bufferFile.delete();
+        functionFile.delete();
+    }
+
+    private static void noBlockLoopIf(String fileName) {
+        String xpathName = fileName + ".xml";
+        String bufferFileName = "buffer.xml";
+        String buffer = "";
+
+        File bufferFile = new File(bufferFileName);
+
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:block[@type='pseudo']/parent::node()\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit)\"", bufferFileName);
+        builder2.redirectOutput(Redirect.INHERIT);
+        builder2.redirectError(new File("out.txt"));
+
+        System.out.println("No block loop/if:");
+        System.out.println("---------------------");
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+        System.out.println("---------------------");
+        bufferFile.delete();
+
+    }
+
+    private static void longFuncHandler(String fileName) {
+        int i = 0;
+        String xpathName = fileName + ".xml";
+        String bufferFileName = "buffer.xml";
+        String buffer = "";
+        ArrayList<String> functionList = new ArrayList<String>();
 
 
         File bufferFile = new File(bufferFileName);
@@ -139,16 +281,18 @@ public class Main {
                 buffer = scan.nextLine();
                 functionList.add(buffer);
             }
+            scan.close();
         } catch (IOException e) {
             e.printStackTrace();
         }
+
 
         // check if file contains long functions
         int lineNum, lineAmount, functionFlag, bracketCounter, stopCounting, origLineNum;
         lineNum = lineAmount = functionFlag = bracketCounter = stopCounting = origLineNum = 0;
         String origCode = "";
         try {
-            File origFile = new File(filename);
+            File origFile = new File(fileName);
             Scanner scan2 = new Scanner(origFile);
             while (scan2.hasNextLine()) {
                 lineNum++;
@@ -182,9 +326,8 @@ public class Main {
             e.printStackTrace();
         }
 
-
-
-
+        bufferFile.delete();
+        functionFile.delete();
     }
 
 }
