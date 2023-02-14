@@ -23,7 +23,7 @@ public class Main {
         }
 
         // here on downwards is editable for testing purposed
-        emptyStmtHandler(args[0]);
+        securityRisks(args[0]);
     }
 
     private static Smell gotoHandler(String filename) {
@@ -114,6 +114,43 @@ public class Main {
             iterator++;
             containsConst = false;
         } while(outputParse.length > 1); // checks to see if a line was retrieved from the code. If not, end loop
+
+        return new Smell();
+    }
+
+    private static Smell securityRisks(String filename) {
+        String riskyMethods[] = {"gets", "strcpy", "strcat", "strcmp", "sprintf", "vsprintf", "atoi",
+                                 "atof", "atol", "atoll", "scanf", "sscanf"};
+        String xpathName = filename + ".xml";
+        String argument;
+        String output = "";
+        int iterator;
+
+        for(int i = 0; i < riskyMethods.length; i++) {
+            iterator = 1;
+            do {
+                argument = "string(//src:expr_stmt[src:expr/src:call/src:name[text()='" + riskyMethods[i] + "']][" + iterator + "])";
+                ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", argument, xpathName);
+                builder.redirectError(new File("out.txt"));
+                try {
+                    Process p = builder.start();
+                    p.waitFor();
+                    output = new String(p.getInputStream().readAllBytes());
+                } catch (IOException e) {
+                    System.out.print("IOExcpetion detected");
+                } catch (InterruptedException e) {
+                    System.out.print("InterruptedException detected");
+                }
+
+                //cleans the string of newline characters and splits it by space
+                output = output.replace("\n", "").replace("\r", "");
+                if(output.length() > 1) {
+                    System.out.println("Security Risk: " + output);
+                }
+                iterator++;
+            } while(output.length() > 1); // checks to see if a line was retrieved from the code. If not, end loop
+
+        }
 
         return new Smell();
     }
