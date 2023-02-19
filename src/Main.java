@@ -68,7 +68,7 @@ public class Main {
 
         }
         if(settings[10]){                //Embedded increment/decrement
-
+            embeddedIncrementHandler(args[0]);
         }
         if(settings[11]){                //Conditional complexity
 
@@ -117,7 +117,7 @@ public class Main {
                 case "-l":              //Block-less loops
                     settings[6] = false;
                     break;
-                case "-p":              //Long parameter lists          CURRENT BUG: doesn't disable if last argument
+                case "-p":              //Long parameter lists
                     if(!(args[i+1].substring(0,1).equals("-"))){
                         try{
                             LONGPARAMTHRESHOLD = Integer.parseInt(args[i+1]);
@@ -130,7 +130,7 @@ public class Main {
                         settings[7] = false;
                     }
                     break;
-                case "-f":              //Long functions                CURRENT BUG: doesn't disable if last argument
+                case "-f":              //Long functions
                     if(!args[i+1].substring(0,1).equals("-")){
                         try{
                             LONGFUNCTIONTHRESHOLD = Integer.parseInt(args[i+1]);
@@ -225,11 +225,42 @@ public class Main {
                     }
                 }
                 if(paramNum >= LONGPARAMTHRESHOLD){
-                    SMELLS.add(new Smell("Long Parameter List", function));
+                    SMELLS.add(new Smell("Long Parameter List", function.substring(0,function.indexOf("{"))));
                 }
             }
 
         } while(outputParse.length > 1);
+    }
+
+    public static void embeddedIncrementHandler(String filename){
+        String xpathName = filename + ".xml";
+        String output = "";
+        String function = "";
+        String[] outputParse;
+        int i = 1;
+        do{
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:expr_stmt[" + i + "]/src:expr/src:call/src:argument_list/src:argument/src:expr/src:operator)\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:expr_stmt[" + i + "]/src:expr/src:call)\"", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+                p = builder2.start();
+                p.waitFor();
+                function = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            output = output.replace("\n", "").replace("\r", "");
+            outputParse = function.split("\\s+");
+            i++;
+            if(output.length() == 2 && (output.equals("++") || output.equals("--"))) {
+                SMELLS.add(new Smell("Embedded Increment/Decrement", function));
+            }
+        } while(outputParse.length > 0);
     }
 }
 
