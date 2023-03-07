@@ -18,6 +18,7 @@ public class Main {
         String[] strArray;
         strArray = fullStr.split("\\s+");
         System.out.println("\nCreating " + args[0] + " to " + args[0] + ".xml\n");
+        System.out.println("---------------");
         Process process;
         process = Runtime.getRuntime().exec(strArray);
         try {
@@ -173,7 +174,7 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(functionFile);
         builder2.redirectError(new File("out.txt"));
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -184,7 +185,7 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
 
         // putting all function names into arraylist
         try {
@@ -227,7 +228,7 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(varFile);
         builder2.redirectError(new File("out.txt"));
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -238,7 +239,7 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
 
         // putting all variable names into arraylist
         try {
@@ -255,7 +256,13 @@ public class Main {
         // checking variable name for camel case
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
         for (i = 0; i < varList.size(); i++) {
-            if (!varList.get(i).matches(camelCase) && !varList.get(i).equals("argc") && !varList.get(i).equals("argv[]")) {
+            if (varList.get(i).contains("[")) {
+                varList.set(i, varList.get(i).substring(0, varList.get(i).indexOf("[")));
+            }
+            if (varList.get(i).contains("<")) {
+                varList.set(i, varList.get(i).substring(0, varList.get(i).indexOf("<")));
+            }
+            if (!varList.get(i).matches(camelCase) && !varList.get(i).equals("argc") && !varList.get(i).equals("argv")) {
                 SMELLS.add(new Smell("Non camel case variable", varList.get(i)));
             }
         }
@@ -279,7 +286,7 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(functionFile);
         builder2.redirectError(new File("out.txt"));
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -290,7 +297,7 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         // putting all function names into arraylist
         try {
             Scanner scan = new Scanner(functionFile);
@@ -332,7 +339,7 @@ public class Main {
                     functionFlag = lineAmount = stopCounting = 0;
                 }
                 if ((lineAmount > 20) && (functionFlag == 1) && (bracketCounter > 0) && (stopCounting == 0)) {
-                    SMELLS.add(new Smell(origLineNum, "Long method/function on line " + origLineNum, origCode.trim()));
+                    SMELLS.add(new Smell("Long method/function", origCode.trim()));
                     stopCounting = 1;
                 }
             }
@@ -360,7 +367,7 @@ public class Main {
         builder2.redirectOutput(outputFile);
         builder2.redirectError(new File("out.txt"));
 
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -371,7 +378,7 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
 
         try {
             Scanner scan = new Scanner(outputFile);
@@ -385,7 +392,7 @@ public class Main {
         }
 
         for (i = 0; i < outputList.size(); i++) {
-            if (outputList.get(i).contains("while") || outputList.get(i).contains("for") || outputList.get(i).contains("do"))
+            if ((outputList.get(i).contains("while") || outputList.get(i).contains("for") || outputList.get(i).contains("do")) && !outputList.get(i).contains("//"))
                 SMELLS.add(new Smell("No block loop", outputList.get(i)));
         }
 
@@ -410,7 +417,7 @@ public class Main {
         builder2.redirectOutput(outputFile);
         builder2.redirectError(new File("out.txt"));
 
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -421,7 +428,7 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
 
         try {
             Scanner scan = new Scanner(outputFile);
@@ -435,7 +442,7 @@ public class Main {
         }
 
         for (i = 0; i < outputList.size(); i++) {
-            if (outputList.get(i).contains("if"))
+            if (outputList.get(i).contains("if") && !outputList.get(i).contains("//"))
                 SMELLS.add(new Smell("No block if", outputList.get(i)));
         }
 
@@ -484,6 +491,7 @@ public class Main {
             output = output.replace("\n", "").replace("\r", "");
             before = before.replace("\n", "").replace("\r", "");
             if (output.length() > 0) {
+                System.out.println("-Empty statement:");
                 System.out.println(before + output);
             }
             iterator++;
@@ -600,7 +608,7 @@ public class Main {
                     }
                 }
                 if (paramNum >= LONGPARAMTHRESHOLD) {
-                    SMELLS.add(new Smell("Long Parameter List", function));
+                    SMELLS.add(new Smell("Long parameter list", function));
                 }
             }
         } while (outputParse.length > 1);
@@ -613,14 +621,14 @@ public class Main {
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//src:goto", xpathName);
         builder.redirectOutput(new File("results.txt"));
         builder.redirectError(new File("out.txt"));
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
     }
 
     public static void deadCodeHandler(String filename) throws IOException {
@@ -630,14 +638,14 @@ public class Main {
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//block_content/decl_stmt[not(following::*[1]/use | following::*[1]/call)]/decl/name/text() | //block_content/expr_stmt[not(following::*[1]/use | following::*[1]/call)]/expr/*[1]/name/text()", xpathName);
         builder.redirectOutput(new File("results.txt"));
         builder.redirectError(new File("out.txt"));
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
     }
 
     static class Smell {
