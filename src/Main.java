@@ -26,6 +26,19 @@ public class Main {
             System.out.println("Error: " + e.getMessage());
         }
         tree = new SourceBSTree(args[0]);
+
+        /// test code ///
+        magicNumHandler(args[0]);
+        String output;
+        for(int i = 0; i < SMELLS.size(); i++) {
+            output = SMELLS.get(i).getLineNum() + " | " + SMELLS.get(i).getCode();
+            System.out.println(output);
+        }
+//        tree.printFile();
+//        System.out.println(tree.size());
+        System.exit(0);
+
+        /// end test code ///
         smellHandler(args);
     }
     public static void settingsHandler(String[] args){
@@ -471,6 +484,7 @@ public class Main {
                 }
                 else {
                     System.out.println("Unable to find line number on iteration" + iterator);
+                    System.out.println("Output: '" + output + "'");
                 }
             }
             iterator++;
@@ -510,6 +524,7 @@ public class Main {
                 }
                 else {
                     System.out.println("Unable to find line number on iteration" + iterator);
+                    System.out.println("Output: '" + output + "'");
                 }
             }
             iterator++;
@@ -927,15 +942,13 @@ public class Main {
             else {findLine(node.getRight(), arr, target);}
         }
 
-        private void startsWith(Node node, ArrayList<Integer> arr, String substr) {
+        private void containsLine(Node node, ArrayList<Integer> arr, String substr) {
             if(node == NIL) {return;}
             if(node.getLine().contains(substr)) {
                 arr.add(node.getLineNum());
-                startsWith(node.getLeft(), arr, substr);
-                startsWith(node.getRight(), arr, substr);
             }
-            if(substr.compareTo(node.getLine()) < 0) {startsWith(node.getLeft(), arr, substr);}
-            else {startsWith(node.getRight(), arr, substr);}
+            containsLine(node.getLeft(), arr, substr);
+            containsLine(node.getRight(), arr, substr);
         }
 
         /**
@@ -951,7 +964,7 @@ public class Main {
             String temp = target.replace("\r", "").replace("\n", "").trim();
             findLine(root, array, temp);
             if(array.size() == 0) {
-                startsWith(root, array, temp);
+                containsLine(root, array, temp);
                 if(array.size() == 0) {return -1;}
             }
             array.sort(null);
@@ -988,7 +1001,7 @@ public class Main {
                 else {
                     findLine(root, temp, strarr[i]);
                     if(temp.size() == 0) {
-                        startsWith(root, temp, strarr[i]);
+                        containsLine(root, temp, strarr[i]);
                         if(temp.size() == 0) {return -1;}
                     }
                 }
