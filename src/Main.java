@@ -27,17 +27,6 @@ public class Main {
             System.out.println("Error: " + e.getMessage());
         }
         tree = new SourceBSTree(args[0]);
-
-        /// test code ///
-        magicNumHandler(args[0]);
-        securityRisks(args[0]);
-        String output;
-        for (Smell smell : SMELLS) {
-            output = smell.getLineNum() + " | " + smell.getSmellType() + ": " + smell.getCode();
-            System.out.println(output);
-        }
-        System.exit(0);
-        /// end test ///
         smellHandler(args);
     }
     public static void settingsHandler(String[] args){
