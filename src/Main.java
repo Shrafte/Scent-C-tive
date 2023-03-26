@@ -96,10 +96,10 @@ public class Main {
 
         }
         if(settings[16]){               //Bad variable names
-            variableNaming(args[0]);
+            //variableNaming(args[0]);
         }
         if(settings[17]){               //Bad function names
-            functionNaming(args[0]);
+            //functionNaming(args[0]);
         }
         if(settings[18]){               //Multiple variable declarations on one line
 
@@ -319,7 +319,7 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(functionFile);
         builder2.redirectError(new File("out.txt"));
-        //System.out.println("---------------------");
+        System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -330,7 +330,7 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        //System.out.println("---------------------");
+        System.out.println("---------------------");
         // putting all function names into arraylist
         try {
             Scanner scan = new Scanner(functionFile);
@@ -393,7 +393,7 @@ public class Main {
         builder.redirectOutput(bufferFile);
         builder.redirectError(new File("out.txt"));
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit)\"", bufferFileName);
-        builder2.redirectOutput(Redirect.INHERIT);
+        //builder2.redirectOutput(Redirect.INHERIT);
         builder2.redirectError(new File("out.txt"));
 
         //System.out.println("No block loop/if:");
@@ -543,18 +543,19 @@ public class Main {
             containsConst = false;
         } while(outputParse.length > 1); // checks to see if a line was retrieved from the code. If not, end loop
     }
-    private static Smell securityRisks(String filename) {
-        String riskyMethods[] = {"gets", "strcpy", "strcat", "strcmp", "sprintf", "vsprintf", "atoi",
+    private static void securityRisks(String filename) {
+        String[] riskyMethods = {"gets", "strcpy", "strcat", "strcmp", "sprintf", "vsprintf", "atoi",
                 "atof", "atol", "atoll", "scanf", "sscanf"};
         String xpathName = filename + ".xml";
         String argument;
         String output = "";
         int iterator;
+        int index;
 
-        for(int i = 0; i < riskyMethods.length; i++) {
+        for (String riskyMethod : riskyMethods) {
             iterator = 1;
             do {
-                argument = "string(//src:expr_stmt[src:expr/src:call/src:name[text()='" + riskyMethods[i] + "']][" + iterator + "])";
+                argument = "string((//src:expr_stmt[src:expr/src:call/src:name[text()='" + riskyMethod + "']])[" + iterator + "])";
                 ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", argument, xpathName);
                 builder.redirectError(new File("out.txt"));
                 try {
@@ -568,16 +569,18 @@ public class Main {
                 }
 
                 //cleans the string of newline characters and splits it by space
-                output = output.replace("\n", "").replace("\r", "");
-                if(output.length() > 1) {
-                    System.out.println("Security Risk: " + output);
+                output = output.trim();
+                if (output.length() > 2) {
+                    if(output.contains("\n")) {index = tree.findMulti(output, SmellEnum.secur, SMELLS);}
+                    else {index = tree.findSingle(output, SmellEnum.secur, SMELLS);}
+                    if(index > -1) {
+                        addSmell(SmellEnum.secur, output, index);
+                    }
                 }
                 iterator++;
-            } while(output.length() > 1); // checks to see if a line was retrieved from the code. If not, end loop
+            } while (output.length() > 2); // checks to see if a line was retrieved from the code. If not, end loop
 
         }
-
-        return new Smell();
     }
     private static void longParamHandler(String filename) {
         String xpathName = filename + ".xml";
@@ -615,7 +618,7 @@ public class Main {
                 int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")), SmellEnum.longParam, SMELLS);
                 if(paramNum >= LONGPARAMTHRESHOLD){
                     //SMELLS.add(new Smell("Long Parameter List", function.substring(0,function.indexOf("{"))));
-                    addSmell("Long Parameter List", function.substring(0,function.indexOf("{")),lineNum);
+                    addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")),lineNum);
                 }
             }
 
@@ -754,10 +757,10 @@ public class Main {
                         break;
                     }
                 }
-                int lineNum = tree.findSingle(output.substring(0,output.length()-1), SmellEnum.global, SMELLS);
+                int lineNum = tree.findSingle(output.substring(0,output.length()-1), SmellEnum.globalVar, SMELLS);
                 if(valid) {
                     //SMELLS.add(new Smell("Global Variable", output.substring(0,output.length()-1)));
-                    addSmell("Global Variable",output.substring(0,output.length()-1),lineNum);
+                    addSmell(SmellEnum.globalVar,output.substring(0,output.length()-1),lineNum);
                 }
             }
         } while(outputParse2.length > 0);
@@ -797,8 +800,8 @@ public class Main {
         }
     }
     static class Node {
-        private String line;
-        private int lineNum;
+        private final String line;
+        private final int lineNum;
         private Node left;
         private Node right;
         private Node parent;
@@ -840,6 +843,7 @@ public class Main {
             return color;
         }
     }
+
     static class SourceBSTree {
         private Node root;
         private Node NIL;
@@ -1007,25 +1011,11 @@ public class Main {
                 lineNum++;
             }
         }
-        public void printFile() {
-            if(root == NIL) {System.out.println("File is empty");}
-            printNode(root);
-        }
         private void printNode(Node node) {
             if(node == NIL) {return;}
             if(node.getLeft() != NIL) {printNode(node.getLeft());}
             System.out.println(node.getLineNum() + ": " + node.getLine());
             if(node.getRight() != NIL) {printNode(node.getRight());}
-        }
-
-        public int size() {
-            return size;
-        }
-        public int leftDepth(){
-            return depth(root.getLeft());
-        }
-        public int rightDepth(){
-            return depth(root.getRight());
         }
         private int depth(Node node) {
             int left = 0, right = 0;
@@ -1035,26 +1025,47 @@ public class Main {
             if(node.getRight() != NIL) {
                 right = 1 + depth(node.getRight());
             }
-            return (left > right) ? left : right;
+            return Math.max(left, right);
         }
         private void findLine(Node node, ArrayList<Integer> arr, String target) {
-            if(node == NIL) {return;}
+            if(node == NIL) {
+                return;
+            }
             if(target.equals(node.getLine())) {
-                arr.add(node.getLineNum());
                 findLine(node.getLeft(), arr, target);
+                arr.add(node.getLineNum());
                 findLine(node.getRight(), arr, target);
             }
-            if(target.compareTo(node.getLine()) < 0) {findLine(node.getLeft(), arr, target);}
-            else {findLine(node.getRight(), arr, target);}
+            else {
+                if (target.compareTo(node.getLine()) < 0) {
+                    findLine(node.getLeft(), arr, target);
+                } else {
+                    findLine(node.getRight(), arr, target);
+                }
+            }
         }
 
-        private void containsLine(Node node, ArrayList<Integer> arr, String substr) {
+        private void containsLine(Node node, ArrayList<Integer> arr, String substr, String smellType) {
             if(node == NIL) {return;}
             if(node.getLine().contains(substr)) {
-                arr.add(node.getLineNum());
+                if(smellType.equals(SmellEnum.magicNum)) {
+                    int index = node.getLine().indexOf("int ");
+
+                    // if it doesn't follow a declaratory int type, then we're good
+                    if (index == -1 || index + 4 != node.getLine().indexOf(substr)) {
+                        containsLine(node.getLeft(), arr, substr, smellType);
+                        arr.add(node.getLineNum());
+                        containsLine(node.getRight(), arr, substr, smellType);
+                    }
+                }
+                else {
+                    containsLine(node.getLeft(), arr, substr, smellType);
+                    arr.add(node.getLineNum());
+                    containsLine(node.getRight(), arr, substr, smellType);
+                }
             }
-            containsLine(node.getLeft(), arr, substr);
-            containsLine(node.getRight(), arr, substr);
+            containsLine(node.getLeft(), arr, substr, smellType);
+            containsLine(node.getRight(), arr, substr, smellType);
         }
 
         /**
@@ -1067,18 +1078,21 @@ public class Main {
          */
         public int findSingle(String target, String smellType, ArrayList<Smell> smells) {
             ArrayList<Integer> array = new ArrayList<Integer>();
-            String temp = target.replace("\r", "").replace("\n", "").trim();
+            String temp = target.trim();
             findLine(root, array, temp);
             if(array.size() == 0) {
-                containsLine(root, array, temp);
-                if(array.size() == 0) {return -1;}
+                containsLine(root, array, temp, smellType);
+                if(array.size() == 0) {
+                    return -1;
+                }
             }
-            array.sort(null);
             int index = 0; // keeps track of line number inside array
-            for(int i = 0; i < smells.size(); i++) {
-                if(smells.get(i).getSmellType() == smellType && smells.get(i).getLineNum() == array.get(index)) {
+            for (Smell smell : smells) {
+                if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)) {
                     index++;
-                    if(index >= array.size()) {return -1;}
+                    if (index >= array.size()) {
+                        return -1;
+                    }
                 }
             }
             return array.get(index);
@@ -1095,20 +1109,22 @@ public class Main {
          * could not find the line number of every single line in the multi-line representation.
          */
         public int findMulti(String target, String smellType, ArrayList<Smell> smells) {
-            String strarr[] = target.split("\n");
+            String tempStr = target.trim();
+            String[] strArr = tempStr.split("\n");
             ArrayList<ArrayList<Integer>> array = new ArrayList<ArrayList<Integer>>();
             ArrayList<Integer> temp; // contains -1 if empty line
-            for(int i = 0; i < strarr.length; i++) {
-                strarr[i] = strarr[i].replace("\r", "").trim();
+            for (String str : strArr) {
+                str = str.trim();
                 temp = new ArrayList<Integer>();
-                if(strarr[i].length() == 0) {
+                if (str.length() == 0) {
                     temp.add(-1);
-                }
-                else {
-                    findLine(root, temp, strarr[i]);
-                    if(temp.size() == 0) {
-                        containsLine(root, temp, strarr[i]);
-                        if(temp.size() == 0) {return -1;}
+                } else {
+                    findLine(root, temp, str);
+                    if (temp.size() == 0) {
+                        containsLine(root, temp, str, smellType);
+                        if (temp.size() == 0) {
+                            return -1;
+                        }
                     }
                 }
                 array.add(temp);
@@ -1117,9 +1133,11 @@ public class Main {
             // removes line numbers from the first array list that already appear in the smells array
             int index = 0;
             for(int i = 0; i < smells.size() && index < array.get(0).size(); i++) {
-                if(smells.get(i).getSmellType() == smellType) {
-                    while(smells.get(i).getLineNum() > array.get(0).get(index) && index < array.get(0).size()) {index++;}
-                    if(index >= array.get(0).size()) {return -1;}
+                if(smells.get(i).getSmellType().equals(smellType)) {
+                    while(index < array.get(0).size() && smells.get(i).getLineNum() > array.get(0).get(index)) {
+                        index++;
+                    }
+                    if(index >= array.get(0).size()) {continue;}
                     if(smells.get(i).getLineNum() == array.get(0).get(index)) {array.get(0).remove(index);}
                 }
             }
@@ -1131,12 +1149,14 @@ public class Main {
                 foundBreak = false;
                 current = array.get(0).get(i);
                 for(int j = 1; j < array.size(); j++) {
-                    if(array.get(j).get(0) != -1 && !(array.get(j).contains(Integer.valueOf(current+j)))) {
+                    if(array.get(j).get(0) != -1 && !(array.get(j).contains(current + j))) {
                         foundBreak = true;
                         break;
                     }
                 }
-                if(!foundBreak) {return current;}
+                if(!foundBreak) {
+                    return current;
+                }
             }
             return -1;
         }
@@ -1156,6 +1176,6 @@ public class Main {
         public static final String varName = "Bad variable name";
         public static final String funcName = "Bad function name";
         public static final String multVar = "Multi-variable declaration";
-        public static final String global = "Global Variables";
+        public static final String globalVar = "Global Variable";
     }
 }
