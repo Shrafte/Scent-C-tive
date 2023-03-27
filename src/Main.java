@@ -117,10 +117,10 @@ public class Main {
             magicNumHandler(args[0]);
         }
         if(settings[5]){                //Block-less if statements
-            noBlockLoopIf(args[0]);
+            noBlockIf(args[0]);
         }
         if(settings[6]){                //Block-less loops
-
+            noBlockLoop(args[0]);
         }
         if(settings[7]){                //Long parameter list
             longParamHandler(args[0]);
@@ -141,8 +141,10 @@ public class Main {
         if(settings[13]){               //Deep block nesting
         }
         if(settings[14]){               //Continue statements
+            continueHandler(args[0]);
         }
         if(settings[15]){               //Break statements
+            breakHandler(args[0]);
         }
         if(settings[16]){               //Bad variable names
             variableNaming(args[0]);
@@ -187,6 +189,7 @@ public class Main {
         String bufferFileName = "buffer.xml";
         String buffer = "";
         ArrayList<String> functionList = new ArrayList<String>();
+        int lineNum;
 
         File bufferFile = new File(bufferFileName);
         File functionFile = new File("functions.txt");
@@ -227,7 +230,8 @@ public class Main {
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
         for (i = 0; i < functionList.size(); i++) {
             if (!functionList.get(i).matches(camelCase) && !functionList.get(i).equals("main")) {
-                SMELLS.add(new Smell("Non camel case function", functionList.get(i)));
+                lineNum = tree.findSingle(functionList.get(i) + "(", SmellEnum.funcName, SMELLS);
+                addSmell(SmellEnum.funcName, functionList.get(i), lineNum);
             }
         }
 
@@ -240,6 +244,8 @@ public class Main {
         String bufferFileName = "buffer.xml";
         String buffer = "";
         ArrayList<String> varList = new ArrayList<String>();
+        ArrayList<String> fullLines = new ArrayList<>();
+        int lineNum;
 
         File bufferFile = new File(bufferFileName);
         File varFile = new File("variables.txt");
@@ -276,16 +282,186 @@ public class Main {
             e.printStackTrace();
         }
 
+        fullLines = findVarLine(fileName);
         // checking variable name for camel case
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
         for (i = 0; i < varList.size(); i++) {
-            if (!varList.get(i).matches(camelCase)) {
-                SMELLS.add(new Smell("Non camel case variable", varList.get(i)));
+            if (varList.get(i).contains("[")) {
+                varList.set(i, varList.get(i).substring(0, varList.get(i).indexOf("[")));
+            }
+            if (varList.get(i).contains("<")) {
+                varList.set(i, varList.get(i).substring(0, varList.get(i).indexOf("<")));
+            }
+            if (!varList.get(i).matches(camelCase) && !varList.get(i).equals("argc") && !varList.get(i).equals("argv") && !varList.get(i).equals("i")) {
+                lineNum = tree.findSingle(fullLines.get(i), SmellEnum.varName, SMELLS);
+                addSmell(SmellEnum.varName, fullLines.get(i), lineNum);
             }
         }
 
         bufferFile.delete();
         varFile.delete();
+    }
+
+    private static ArrayList<String> findVarLine(String fileName) {
+        ArrayList<String> fullDecLine = new ArrayList<>();
+        String buffer = "";
+        int i = 0;
+
+        String xpathName = fileName + ".xml";
+        String bufferFileName = "buffer.xml";
+
+        File bufferFile = new File(bufferFileName);
+        File varLinesFile = new File("varLines.txt");
+
+        // creating file with all variable declaration lines
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl)\"", bufferFileName);
+        builder2.redirectOutput(varLinesFile);
+        builder2.redirectError(new File("out.txt"));
+
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+
+        // adding the variable declaration lines to an arraylist
+        try {
+            Scanner scan = new Scanner(varLinesFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                fullDecLine.add(buffer);
+            }
+            scan.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        // for multiple var declarations on one line
+        for (i = 0; i < fullDecLine.size(); i++) {
+            if (!fullDecLine.get(i).contains(" ")) {
+                fullDecLine.set(i, fullDecLine.get(i-1) + ", " + fullDecLine.get(i));
+            }
+        }
+
+        varLinesFile.delete();
+
+        return fullDecLine;
+    }
+
+    private static void continueHandler(String fileName) {
+        String xpathName = fileName + ".xml";
+        String bufferFileName = "buffer.xml";
+        String buffer = "";
+        ArrayList<String> outputList = new ArrayList<String>();
+        int i, lineNum;
+
+        File bufferFile = new File(bufferFileName);
+        File outputFile = new File("output.txt");
+
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:continue\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit)\"", bufferFileName);
+        builder2.redirectOutput(outputFile);
+        builder2.redirectError(new File("out.txt"));
+
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+
+        try {
+            Scanner scan = new Scanner(outputFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                outputList.add(buffer);
+            }
+            scan.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        if (outputList.size() > 0) {
+            if (outputList.get(0) == "") {
+                outputList.clear();
+            }
+        }
+
+        for (i = 0; i < outputList.size(); i++) {
+            lineNum = tree.findSingle(outputList.get(i), SmellEnum.contStmt, SMELLS);
+            addSmell(SmellEnum.contStmt, outputList.get(i), lineNum);
+        }
+
+        bufferFile.delete();
+        outputFile.delete();
+    }
+
+    private static void breakHandler(String fileName) {
+        String xpathName = fileName + ".xml";
+        String bufferFileName = "buffer.xml";
+        String buffer = "";
+        ArrayList<String> outputList = new ArrayList<String>();
+        int i, lineNum;
+
+        File bufferFile = new File(bufferFileName);
+        File outputFile = new File("output.txt");
+
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:break\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit)\"", bufferFileName);
+        builder2.redirectOutput(outputFile);
+        builder2.redirectError(new File("out.txt"));
+
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+
+        try {
+            Scanner scan = new Scanner(outputFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                outputList.add(buffer);
+            }
+            scan.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        if (outputList.size() > 0) {
+            if (outputList.get(0) == "") {
+                outputList.clear();
+            }
+        }
+
+        for (i = 0; i < outputList.size(); i++) {
+            lineNum = tree.findSingle(outputList.get(i), SmellEnum.breakStmt, SMELLS);
+            addSmell(SmellEnum.breakStmt, outputList.get(i), lineNum);
+        }
+
+        bufferFile.delete();
+        outputFile.delete();
     }
 
     private static void longFuncHandler(String fileName) {
@@ -356,7 +532,7 @@ public class Main {
                     functionFlag = lineAmount = stopCounting = 0;
                 }
                 if ((lineAmount > 20) && (functionFlag == 1) && (bracketCounter > 0) && (stopCounting == 0)) {
-                    SMELLS.add(new Smell(origLineNum, "Long method/function on line " + origLineNum, origCode.trim()));
+                    addSmell(SmellEnum.longFunc, origCode.trim(), origLineNum);
                     stopCounting = 1;
                 }
             }
@@ -366,22 +542,24 @@ public class Main {
         bufferFile.delete();
         functionFile.delete();
     }
-    private static void noBlockLoopIf(String fileName) {
+    private static void noBlockLoop(String fileName) {
         String xpathName = fileName + ".xml";
         String bufferFileName = "buffer.xml";
         String buffer = "";
+        ArrayList<String> outputList = new ArrayList<String>();
+        int i, lineNum;
 
         File bufferFile = new File(bufferFileName);
+        File outputFile = new File("output.txt");
 
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:block[@type='pseudo']/parent::node()\"", xpathName);
         builder.redirectOutput(bufferFile);
         builder.redirectError(new File("out.txt"));
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit)\"", bufferFileName);
-        builder2.redirectOutput(Redirect.INHERIT);
+        builder2.redirectOutput(outputFile);
         builder2.redirectError(new File("out.txt"));
 
-        System.out.println("No block loop/if:");
-        System.out.println("---------------------");
+        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -392,9 +570,80 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
-        bufferFile.delete();
+        //System.out.println("---------------------");
 
+        try {
+            Scanner scan = new Scanner(outputFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                outputList.add(buffer);
+            }
+            scan.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        for (i = 0; i < outputList.size(); i++) {
+            if ((outputList.get(i).contains("while") || outputList.get(i).contains("for") || outputList.get(i).contains("do")) && !outputList.get(i).contains("//")) {
+                lineNum = tree.findSingle(outputList.get(i), SmellEnum.blocklessLoop, SMELLS);
+                addSmell(SmellEnum.blocklessLoop, outputList.get(i), lineNum);
+            }
+        }
+
+        bufferFile.delete();
+        outputFile.delete();
+    }
+
+    private static void noBlockIf(String fileName) {
+        String xpathName = fileName + ".xml";
+        String bufferFileName = "buffer.xml";
+        String buffer = "";
+        ArrayList<String> outputList = new ArrayList<String>();
+        int i, lineNum;
+
+        File bufferFile = new File(bufferFileName);
+        File outputFile = new File("output.txt");
+
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:block[@type='pseudo']/parent::node()\"", xpathName);
+        builder.redirectOutput(bufferFile);
+        builder.redirectError(new File("out.txt"));
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit)\"", bufferFileName);
+        builder2.redirectOutput(outputFile);
+        builder2.redirectError(new File("out.txt"));
+
+        //System.out.println("---------------------");
+        try {
+            Process p = builder.start();
+            p.waitFor();
+            Process p2 = builder2.start();
+            p2.waitFor();
+        } catch (IOException e) {
+            System.out.print("");
+        } catch (InterruptedException e) {
+            System.out.print("");
+        }
+        //System.out.println("---------------------");
+
+        try {
+            Scanner scan = new Scanner(outputFile);
+            while (scan.hasNextLine()) {
+                buffer = scan.nextLine();
+                outputList.add(buffer);
+            }
+            scan.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        for (i = 0; i < outputList.size(); i++) {
+            if (outputList.get(i).contains("if") && !outputList.get(i).contains("//")) {
+                lineNum = tree.findSingle(outputList.get(i), SmellEnum.blocklessLoop, SMELLS);
+                addSmell(SmellEnum.blocklessIf, outputList.get(i), lineNum);
+            }
+        }
+
+        bufferFile.delete();
+        outputFile.delete();
     }
     private static Smell emptyStmtHandler(String filename) {
         System.out.println("Running XPath: Finding Empty Statements in " + filename + ":");
@@ -522,7 +771,6 @@ public class Main {
 
         }
     }
-
 
     private static void longParamHandler(String filename) {
         String xpathName = filename + ".xml";
@@ -1009,10 +1257,11 @@ public class Main {
     }
 
     static class SmellEnum {
-        public static final String gotoStmt = "Goto Statement";
-        public static final String emptyStmt = "Empty Statement";
-        public static final String magicNum = "Magic Number";
-        public static final String blockless = "Blockless If/Loop";
+        public static final String gotoStmt = "Goto statement";
+        public static final String emptyStmt = "Empty statement";
+        public static final String magicNum = "Magic number";
+        public static final String blocklessLoop = "Blockless loop";
+        public static final String blocklessIf = "Blockless if";
         public static final String longParam = "Long parameter list";
         public static final String longFunc = "Long function";
         public static final String deadFunc = "Dead function";

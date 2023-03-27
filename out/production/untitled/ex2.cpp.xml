@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<unit xmlns="http://www.srcML.org/srcML/src" xmlns:cpp="http://www.srcML.org/srcML/cpp" revision="1.0.0" language="C++" filename="ex2.cpp"><cpp:include>#<cpp:directive>include</cpp:directive> <cpp:file>&lt;iostream&gt;</cpp:file></cpp:include>
+<using>using <namespace>namespace <name>std</name>;</namespace></using>
+
+<function><type><name>int</name></type> <name>sum</name><parameter_list>(<parameter><decl><type><name>int</name></type> <name>a</name></decl></parameter>, <parameter><decl><type><name>int</name></type> <name>b</name></decl></parameter>, <parameter><decl><type><name>int</name></type> <name>c</name></decl></parameter>, <parameter><decl><type><name>int</name></type> <name>d</name></decl></parameter>, <parameter><decl><type><name>int</name></type> <name>e</name></decl></parameter>, <parameter><decl><type><name>int</name></type> <name>f</name></decl></parameter>, <parameter><decl><type><name>int</name></type> <name>g</name></decl></parameter>)</parameter_list> <block>{<block_content>
+    <decl_stmt><decl><type><name>int</name></type> <name>sum</name> <init>= <expr><name>a</name> <operator>+</operator> <name>b</name> <operator>+</operator> <name>c</name> <operator>+</operator> <name>d</name> <operator>+</operator> <name>e</name> <operator>+</operator> <name>f</name> <operator>+</operator> <name>g</name></expr></init></decl>;</decl_stmt>
+    <return>return <expr><name>sum</name></expr>;</return>
+</block_content>}</block></function>
+
+<function><type><name>int</name></type> <name>main</name><parameter_list>()</parameter_list> <block>{<block_content>
+    <decl_stmt><decl><type><name>int</name></type> <name>answer</name></decl>;</decl_stmt>
+
+    <expr_stmt><expr><name>cout</name> <operator>&lt;&lt;</operator> <literal type="string">"calculating sum"</literal> <operator>&lt;&lt;</operator> <name>endl</name></expr>;</expr_stmt><empty_stmt>;</empty_stmt>
+    <expr_stmt><expr><name>answer</name> <operator>=</operator> <call><name>sum</name><argument_list>(<argument><expr><literal type="number">1</literal></expr></argument>,<argument><expr><literal type="number">2</literal></expr></argument>,<argument><expr><literal type="number">3</literal></expr></argument>,<argument><expr><literal type="number">4</literal></expr></argument>,<argument><expr><literal type="number">5</literal></expr></argument>,<argument><expr><literal type="number">6</literal></expr></argument>,<argument><expr><literal type="number">7</literal></expr></argument>)</argument_list></call></expr>;</expr_stmt>
+    <expr_stmt><expr><name>cout</name> <operator>&lt;&lt;</operator> <literal type="string">"sum is "</literal><operator>&lt;&lt;</operator> <name>answer</name> <operator>&lt;&lt;</operator> <name>endl</name></expr>;</expr_stmt>
+
+    <return>return <expr><literal type="number">0</literal></expr>;</return>
+</block_content>}</block></function></unit>
