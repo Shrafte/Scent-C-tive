@@ -27,7 +27,9 @@ public class Main {
             System.out.println("Error: " + e.getMessage());
         }
         tree = new SourceBSTree(args[0]);
+
         smellHandler(args);
+        printSmells();
     }
     public static void settingsHandler(String[] args){
         Arrays.fill(settings, true);
@@ -134,6 +136,7 @@ public class Main {
         if(settings[11]){                //Conditional complexity
         }
         if(settings[12]){               //Security issues
+            securityRisks(args[0]);
         }
         if(settings[13]){               //Deep block nesting
         }
@@ -158,11 +161,10 @@ public class Main {
      * @param code The offending lines of code concat into one string
      * @param line The line number of the first line of the offending code
      */
-    public static void addSmell(String smellType, String code, int line) {
+    private static void addSmell(String smellType, String code, int line) {
         Smell smell = new Smell(line, smellType, code);
         boolean isPlaced = false;
-        if(SMELLS.size() == 0 ||
-                SMELLS.get(SMELLS.size() - 1).getLineNum() <= line) {
+        if(SMELLS.size() == 0) {
             SMELLS.add(smell);
             return;
         }
@@ -171,6 +173,12 @@ public class Main {
                 SMELLS.add(i, smell);
                 isPlaced = true;
             }
+        }
+        if(!isPlaced) {SMELLS.add(smell);}
+    }
+    private static void printSmells() {
+        for(int i = 0; i < SMELLS.size(); i++) {
+            System.out.println(SMELLS.get(i).getLineNum() + " | " + SMELLS.get(i).getSmellType() + ": " + SMELLS.get(i).getCode());
         }
     }
     private static void functionNaming(String fileName) {
@@ -924,7 +932,8 @@ public class Main {
             }
             int index = 0; // keeps track of line number inside array
             for (Smell smell : smells) {
-                if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)) {
+                if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
+                    && smell.getCode().equals(temp)) {
                     index++;
                     if (index >= array.size()) {
                         return -1;
@@ -970,7 +979,8 @@ public class Main {
             int index = 0;
             for(int i = 0; i < smells.size() && index < array.get(0).size(); i++) {
                 if(smells.get(i).getSmellType().equals(smellType)) {
-                    while(index < array.get(0).size() && smells.get(i).getLineNum() > array.get(0).get(index)) {
+                    while(index < array.get(0).size() && smells.get(i).getLineNum() > array.get(0).get(index)
+                            && smells.get(i).getCode().equals(tempStr)) {
                         index++;
                     }
                     if(index >= array.get(0).size()) {continue;}
