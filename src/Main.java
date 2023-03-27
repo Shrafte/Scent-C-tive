@@ -4,6 +4,7 @@ import java.io.IOException;
 import java.lang.ProcessBuilder.Redirect;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Objects;
 import java.util.Scanner;
 
 public class Main {
@@ -26,12 +27,9 @@ public class Main {
             System.out.println("Error: " + e.getMessage());
         }
         tree = new SourceBSTree(args[0]);
+
         smellHandler(args);
-
-        for (int i = 0; i < SMELLS.size(); i++) {
-            System.out.println("Smell: " + SMELLS.get(i).smellType + " | Code: " + SMELLS.get(i).code + " | Linenum: " + SMELLS.get(i).lineNum);
-        }
-
+        printSmells();
     }
     public static void settingsHandler(String[] args){
         Arrays.fill(settings, true);
@@ -138,6 +136,7 @@ public class Main {
         if(settings[11]){                //Conditional complexity
         }
         if(settings[12]){               //Security issues
+            securityRisks(args[0]);
         }
         if(settings[13]){               //Deep block nesting
         }
@@ -164,11 +163,10 @@ public class Main {
      * @param code The offending lines of code concat into one string
      * @param line The line number of the first line of the offending code
      */
-    public static void addSmell(String smellType, String code, int line) {
+    private static void addSmell(String smellType, String code, int line) {
         Smell smell = new Smell(line, smellType, code);
         boolean isPlaced = false;
-        if(SMELLS.size() == 0 ||
-                SMELLS.get(SMELLS.size() - 1).getLineNum() <= line) {
+        if(SMELLS.size() == 0) {
             SMELLS.add(smell);
             return;
         }
@@ -177,6 +175,12 @@ public class Main {
                 SMELLS.add(i, smell);
                 isPlaced = true;
             }
+        }
+        if(!isPlaced) {SMELLS.add(smell);}
+    }
+    private static void printSmells() {
+        for(int i = 0; i < SMELLS.size(); i++) {
+            System.out.println(SMELLS.get(i).getLineNum() + " | " + SMELLS.get(i).getSmellType() + ": " + SMELLS.get(i).getCode());
         }
     }
     private static void functionNamingHandler(String fileName) {
@@ -693,98 +697,54 @@ public class Main {
         String xpathName = filename + ".xml";
         String argument;
         String output = "";
-        String outputParse[];
         int iterator = 1;
         int lineNum = -1;
-        boolean containsConst = false; //used for declaration statements
+        String[] arguments = {  "(//src:expr_stmt[src:expr/src:literal[@type='number']])",
+                                "(//src:condition[src:expr/src:literal[@type='number']])"};
 
-        // handles expression statements
-        do {
-            // gets each expression which assigns a literal number to a variable
-            argument = "string(//src:expr_stmt[src:expr[src:literal/@type='number']][" + iterator + "])";
-            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", argument, xpathName);
-            builder.redirectError(new File("out.txt"));
-            try {
-                Process p = builder.start();
-                p.waitFor();
-                output = new String(p.getInputStream().readAllBytes());
-            } catch (IOException e) {
-                System.out.print("IOExcpetion detected");
-            } catch (InterruptedException e) {
-                System.out.print("InterruptedException detected");
-            }
-
-            //cleans the string of newline characters and splits it by space
-//            output = output.replace("\n", "").replace("\r", "");
-            outputParse = output.split("\\s+");
-            if(outputParse.length > 1) {
-//                System.out.println("Magic Number: " + output);
-                lineNum = tree.findSingle(output, SmellEnum.magicNum, SMELLS);
-                if(lineNum > -1) {
-                    addSmell(SmellEnum.magicNum, output, lineNum);
+        for (String s : arguments) {
+            iterator = 1;
+            do {
+                argument = "string(" + s + "[" + iterator + "])";
+                ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", argument, xpathName);
+                builder.redirectError(new File("out.txt"));
+                try {
+                    Process p = builder.start();
+                    p.waitFor();
+                    output = new String(p.getInputStream().readAllBytes());
+                } catch (IOException e) {
+                    System.out.print("IOExcpetion detected");
+                } catch (InterruptedException e) {
+                    System.out.print("InterruptedException detected");
                 }
-                else {
-                    System.out.println("Unable to find line number on iteration" + iterator);
-                    System.out.println("Output: '" + output + "'");
+
+                output = output.trim();
+                if (output.length() > 2) {;
+                    if(output.contains("\n")) {lineNum = tree.findMulti(output, SmellEnum.magicNum, SMELLS);}
+                    else {lineNum = tree.findSingle(output, SmellEnum.magicNum, SMELLS);}
+                    if (lineNum > -1) {
+                        output = output.trim();
+                        addSmell(SmellEnum.magicNum, output, lineNum);
+                    }
                 }
-            }
-            iterator++;
-        } while(outputParse.length > 1); // checks to see if a line was retrieved from the code. If not, end loop
-
-        iterator = 1; // reset to 1 for the next loop
-
-        // handles declaration statements that are not of constant integers
-        do {
-            // gets each declaration statement that assigns a literal number to a non-constant variable
-            argument = "string(//src:decl_stmt[src:decl/src:init/src:expr/src:literal/@type='number'][" + iterator + "])";
-            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", argument, xpathName);
-            builder.redirectError(new File("out.txt"));
-            try {
-                Process p = builder.start();
-                p.waitFor();
-                output = new String(p.getInputStream().readAllBytes());
-            } catch (IOException e) {
-                System.out.print("IOExcpetion detected");
-            } catch (InterruptedException e) {
-                System.out.print("InterruptedException detected");
-            }
-
-            //cleans the string of newline characters and splits it by space
-//            output = output.replace("\n", "").replace("\r", "");
-            outputParse = output.split("\\s+");
-
-            //checks to see if 'const' type appears in the statement
-            for(String s : outputParse) {
-                if(s.equals("const")) {containsConst = true;}
-            }
-
-            if(outputParse.length > 1 && !containsConst) {
-                lineNum = tree.findSingle(output, SmellEnum.magicNum, SMELLS);
-                if(lineNum > -1) {
-                    addSmell(SmellEnum.magicNum, output, lineNum);
-                }
-                else {
-                    System.out.println("Unable to find line number on iteration" + iterator);
-                    System.out.println("Output: '" + output + "'");
-                }
-            }
-            iterator++;
-            containsConst = false;
-        } while(outputParse.length > 1); // checks to see if a line was retrieved from the code. If not, end loop
+                iterator++;
+            } while (output.length() > 2); // checks to see if a line was retrieved from the code. If not, end loop
+        }
     }
 
-    private static Smell securityRisks(String filename) {
-        String riskyMethods[] = {"gets", "strcpy", "strcat", "strcmp", "sprintf", "vsprintf", "atoi",
+    private static void securityRisks(String filename) {
+        String[] riskyMethods = {"gets", "strcpy", "strcat", "strcmp", "sprintf", "vsprintf", "atoi",
                 "atof", "atol", "atoll", "scanf", "sscanf"};
         String xpathName = filename + ".xml";
         String argument;
         String output = "";
         int iterator;
+        int index;
 
-        for(int i = 0; i < riskyMethods.length; i++) {
+        for (String riskyMethod : riskyMethods) {
             iterator = 1;
             do {
-                argument = "string(//src:expr_stmt[src:expr/src:call/src:name[text()='" + riskyMethods[i] + "']][" + iterator + "])";
+                argument = "string((//src:expr_stmt[src:expr/src:call/src:name[text()='" + riskyMethod + "']])[" + iterator + "])";
                 ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", argument, xpathName);
                 builder.redirectError(new File("out.txt"));
                 try {
@@ -798,16 +758,18 @@ public class Main {
                 }
 
                 //cleans the string of newline characters and splits it by space
-                output = output.replace("\n", "").replace("\r", "");
-                if(output.length() > 1) {
-                    System.out.println("Security Risk: " + output);
+                output = output.trim();
+                if (output.length() > 2) {
+                    if(output.contains("\n")) {index = tree.findMulti(output, SmellEnum.secur, SMELLS);}
+                    else {index = tree.findSingle(output, SmellEnum.secur, SMELLS);}
+                    if(index > -1) {
+                        addSmell(SmellEnum.secur, output, index);
+                    }
                 }
                 iterator++;
-            } while(output.length() > 1); // checks to see if a line was retrieved from the code. If not, end loop
+            } while (output.length() > 2); // checks to see if a line was retrieved from the code. If not, end loop
 
         }
-
-        return new Smell();
     }
 
     private static void longParamHandler(String filename) {
@@ -930,8 +892,8 @@ public class Main {
     }
 
     static class Node {
-        private String line;
-        private int lineNum;
+        private final String line;
+        private final int lineNum;
         private Node left;
         private Node right;
         private Node parent;
@@ -1219,7 +1181,7 @@ public class Main {
             int index = 0; // keeps track of line number inside array
             for (Smell smell : smells) {
                 if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
-                        && smell.getCode().equals(temp)) {
+                    && smell.getCode().equals(temp)) {
                     index++;
                     if (index >= array.size()) {
                         return -1;
