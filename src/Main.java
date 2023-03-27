@@ -119,10 +119,10 @@ public class Main {
             magicNumHandler(args[0]);
         }
         if(settings[5]){                //Block-less if statements
-            noBlockIf(args[0]);
+            noBlockIfHandler(args[0]);
         }
         if(settings[6]){                //Block-less loops
-            noBlockLoop(args[0]);
+            noBlockLoopHandler(args[0]);
         }
         if(settings[7]){                //Long parameter list
             longParamHandler(args[0]);
@@ -148,10 +148,10 @@ public class Main {
             breakHandler(args[0]);
         }
         if(settings[16]){               //Bad variable names
-            variableNaming(args[0]);
+            variableNamingHandler(args[0]);
         }
         if(settings[17]){               //Bad function names
-            functionNaming(args[0]);
+            functionNamingHandler(args[0]);
         }
         if(settings[18]){               //Multiple variable declarations on one line
         }
@@ -179,7 +179,7 @@ public class Main {
             }
         }
     }
-    private static void functionNaming(String fileName) {
+    private static void functionNamingHandler(String fileName) {
         int i = 0;
         String xpathName = fileName + ".xml";
         String bufferFileName = "buffer.xml";
@@ -234,7 +234,7 @@ public class Main {
         bufferFile.delete();
         functionFile.delete();
     }
-    private static void variableNaming(String fileName) {
+    private static void variableNamingHandler(String fileName) {
         int i = 0;
         String xpathName = fileName + ".xml";
         String bufferFileName = "buffer.xml";
@@ -538,7 +538,7 @@ public class Main {
         bufferFile.delete();
         functionFile.delete();
     }
-    private static void noBlockLoop(String fileName) {
+    private static void noBlockLoopHandler(String fileName) {
         String xpathName = fileName + ".xml";
         String bufferFileName = "buffer.xml";
         String buffer = "";
@@ -590,7 +590,7 @@ public class Main {
         outputFile.delete();
     }
 
-    private static void noBlockIf(String fileName) {
+    private static void noBlockIfHandler(String fileName) {
         String xpathName = fileName + ".xml";
         String bufferFileName = "buffer.xml";
         String buffer = "";
