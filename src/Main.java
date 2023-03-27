@@ -10,6 +10,7 @@ public class Main {
     static int LONGFUNCTIONTHRESHOLD = 50;
     static boolean[] settings = new boolean[20];
     static ArrayList<Smell> SMELLS = new ArrayList<>();
+    static ArrayList<String> DICTIONARY = new ArrayList<>();
     static SourceBSTree tree;
     public static void main(String[] args) throws IOException {
 
@@ -40,7 +41,11 @@ public class Main {
 
     public static void smellHandler(String[] args){
         if(settings[0]){                //Dictionary of Symbols
-
+            //dictionaryHandler(args[0]);
+            //System.out.println("Dictionary of Symbols");
+            //for(String entry : DICTIONARY){
+            //    System.out.println("\t" + entry);
+            //}
         }
         if(!settings[1]){                //smell report
             return;
@@ -215,7 +220,6 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(functionFile);
         builder2.redirectError(new File("out.txt"));
-        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -226,7 +230,6 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        //System.out.println("---------------------");
 
         // putting all function names into arraylist
         try {
@@ -268,7 +271,6 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(varFile);
         builder2.redirectError(new File("out.txt"));
-        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -279,7 +281,6 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        //System.out.println("---------------------");
 
         // putting all variable names into arraylist
         try {
@@ -319,7 +320,6 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(functionFile);
         builder2.redirectError(new File("out.txt"));
-        System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -330,7 +330,6 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        System.out.println("---------------------");
         // putting all function names into arraylist
         try {
             Scanner scan = new Scanner(functionFile);
@@ -396,8 +395,6 @@ public class Main {
         //builder2.redirectOutput(Redirect.INHERIT);
         builder2.redirectError(new File("out.txt"));
 
-        //System.out.println("No block loop/if:");
-        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
@@ -408,7 +405,6 @@ public class Main {
         } catch (InterruptedException e) {
             System.out.print("");
         }
-        //System.out.println("---------------------");
         bufferFile.delete();
 
     }
@@ -617,7 +613,6 @@ public class Main {
                 }
                 int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")), SmellEnum.longParam, SMELLS);
                 if(paramNum >= LONGPARAMTHRESHOLD){
-                    //SMELLS.add(new Smell("Long Parameter List", function.substring(0,function.indexOf("{"))));
                     addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")),lineNum);
                 }
             }
@@ -671,25 +666,15 @@ public class Main {
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//src:goto",xpathName);
         builder.redirectOutput(new File("results.txt"));
         builder.redirectError(new File("out.txt"));
-        //System.out.println("---------------------");
         try {
             Process p = builder.start();
             p.waitFor();
         }catch (InterruptedException e){
             System.out.print("");
         }
-        //System.out.print("---------------------");
     }
     public static void deadCodeHandler(String filename) throws IOException {
         String xpathName = filename + ".xml";
-//        Process process;
-//        process = Runtime.getRuntime().exec(xpathName);
-//        try {
-//            process.waitFor();
-//        } catch (InterruptedException e) {
-//            System.out.println("Error: " + e.getMessage());
-//        }
-        //System.out.println("Running XPath: Finding Dead Code");
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//block_content/decl_stmt[not(following::*[1]/use | following::*[1]/call)]/decl/name/text() | //block_content/expr_stmt[not(following::*[1]/use | following::*[1]/call)]/expr/*[1]/name/text()",xpathName);
         builder.redirectOutput(new File("results.txt"));
         builder.redirectError(new File("out.txt"));
@@ -699,7 +684,6 @@ public class Main {
         }catch (InterruptedException e){
             System.out.print("");
         }
-        //System.out.print("---------------------");
     }
     public static void globalVariableHandler(String filename){
         String xpathName = filename + ".xml";
@@ -711,7 +695,7 @@ public class Main {
         int j = 1;
         ArrayList<String> nonGlobalVariables = new ArrayList<>();
         do{
-            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:block_content/src:decl_stmt[" + j + "]/src:decl)\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:block_content/src:decl_stmt[" + j + "])\"", xpathName);
             try {
                 Process p = builder2.start();
                 p.waitFor();
@@ -759,13 +743,51 @@ public class Main {
                 }
                 int lineNum = tree.findSingle(output.substring(0,output.length()-1), SmellEnum.globalVar, SMELLS);
                 if(valid) {
-                    //SMELLS.add(new Smell("Global Variable", output.substring(0,output.length()-1)));
                     addSmell(SmellEnum.globalVar,output.substring(0,output.length()-1),lineNum);
                 }
             }
         } while(outputParse2.length > 0);
     }
+    public static void dictionaryHandler(String filename){
+        String xpathName = filename + ".xml";
+        String output = "";
+        String function = "";
+        String[] outputParse;
+        int i = 1;
+        do{
+            int paramNum = 0;
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+                p = builder2.start();
+                p.waitFor();
+                function = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            output = output.replace("\n", "").replace("\r", "");
+            outputParse = output.split("\\s+");
+            i++;
+            if(outputParse.length > 1){
+                char[] outChars = output.toCharArray();
+                for (char outChar : outChars) {
+                    if (outChar == ',' || outChar == ')') {
+                        paramNum++;
+                    }
+                }
+                if(paramNum >= LONGPARAMTHRESHOLD){
+                    DICTIONARY.add(function.substring(0,function.indexOf("{")));
+                }
+            }
 
+        } while(outputParse.length > 1);
+    }
     static class Smell {
         int lineNum;
         String smellType;
