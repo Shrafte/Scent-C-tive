@@ -9,7 +9,7 @@ import java.util.Scanner;
 
 public class Main {
     static int LONGPARAMTHRESHOLD = 6;
-    static int LONGFUNCTIONTHRESHOLD = 50;
+    static int LONGFUNCTIONTHRESHOLD = 20;
     static boolean[] settings = new boolean[20];
     static ArrayList<Smell> SMELLS = new ArrayList<>();
     static ArrayList<String> DICTIONARY = new ArrayList<>();
@@ -102,6 +102,12 @@ public class Main {
     }
     public static void smellHandler(String[] args) throws IOException {
         if(settings[0]){                //Dictionary of Symbols
+            //dictionaryHandler(args[0]);
+            //System.out.println("Dictionary of Symbols:");
+            for(String entry : DICTIONARY){
+                System.out.println("\t" + entry);
+            }
+            //return;
         }
         if(!settings[1]){                //smell report
             return;
@@ -110,7 +116,7 @@ public class Main {
             gotoHandler(args[0]);
         }
         if(settings[3]){                //Empty Statements
-            emptyStmtHandler(args[0]);
+            //emptyStmtHandler(args[0]);
         }
         if(settings[4]){                //Magic numbers
             magicNumHandler(args[0]);
@@ -528,7 +534,7 @@ public class Main {
                 if (bracketCounter == 0) {
                     functionFlag = lineAmount = stopCounting = 0;
                 }
-                if ((lineAmount > 20) && (functionFlag == 1) && (bracketCounter > 0) && (stopCounting == 0)) {
+                if ((lineAmount > LONGFUNCTIONTHRESHOLD) && (functionFlag == 1) && (bracketCounter > 0) && (stopCounting == 0)) {
                     addSmell(SmellEnum.longFunc, origCode.trim(), origLineNum);
                     stopCounting = 1;
                 }
@@ -767,12 +773,15 @@ public class Main {
         String xpathName = filename + ".xml";
         String output = "";
         String function = "";
+        String temp = "";
         String[] outputParse;
         int i = 1;
         do{
             int paramNum = 0;
             ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "]/src:parameter_list)\"", xpathName);
             ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
+            ProcessBuilder builder3 = new ProcessBuilder("srcml", "--xpath", "\"count(//src:function[" + i + "]/src:parameter_list/src:parameter)\"", xpathName);
+
             builder.redirectError(new File("out.txt"));
             try {
                 Process p = builder.start();
@@ -781,6 +790,10 @@ public class Main {
                 p = builder2.start();
                 p.waitFor();
                 function = new String(p.getInputStream().readAllBytes());
+                p = builder3.start();
+                p.waitFor();
+                temp = new String(p.getInputStream().readAllBytes()).trim();
+                paramNum = Integer.parseInt(temp);
             } catch (IOException e) {
                 System.out.println("IOException");
             } catch (InterruptedException e) {
@@ -791,14 +804,9 @@ public class Main {
             i++;
             if(outputParse.length > 1){
                 char[] outChars = output.toCharArray();
-                for (char outChar : outChars) {
-                    if (outChar == ',' || outChar == ')') {
-                        paramNum++;
-                    }
-                }
-                int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")), SmellEnum.longParam, SMELLS);
+                int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")).trim(), SmellEnum.longParam, SMELLS);
                 if(paramNum >= LONGPARAMTHRESHOLD){
-                    addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")),lineNum);
+                    addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")).trim(),lineNum);
                 }
             }
         } while(outputParse.length > 1);
@@ -940,20 +948,17 @@ public class Main {
     }
     public static void dictionaryHandler(String filename){
         String xpathName = filename + ".xml";
-        String output = "";
         String function = "";
-        String[] outputParse;
+        String var = "";
+        String[] funcParse;
+        String[] varParse;
         int i = 1;
         do{
             int paramNum = 0;
             ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
-            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
             builder.redirectError(new File("out.txt"));
             try {
                 Process p = builder.start();
-                p.waitFor();
-                output = new String(p.getInputStream().readAllBytes());
-                p = builder2.start();
                 p.waitFor();
                 function = new String(p.getInputStream().readAllBytes());
             } catch (IOException e) {
@@ -961,22 +966,61 @@ public class Main {
             } catch (InterruptedException e) {
                 System.out.println("InterruptedException");
             }
-            output = output.replace("\n", "").replace("\r", "");
-            outputParse = output.split("\\s+");
+            function = function.replace("\n", "").replace("\r", "");
+            funcParse = function.split("\\s+");
             i++;
-            if(outputParse.length > 1){
-                char[] outChars = output.toCharArray();
-                for (char outChar : outChars) {
-                    if (outChar == ',' || outChar == ')') {
-                        paramNum++;
+            if(funcParse.length > 1){
+                System.out.println(function.substring(0,function.indexOf("{")));
+                DICTIONARY.add((function.substring(0,function.indexOf("{")).trim()));
+                int j = 1;
+                do {
+                    ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "]/src:decl_stmt[" + j + "])\"", xpathName);
+                    try {
+                        Process p = builder2.start();
+                        p.waitFor();
+                        var = new String(p.getInputStream().readAllBytes());
+                    } catch (IOException e) {
+                        System.out.println("IOException");
+                    } catch (InterruptedException e) {
+                        System.out.println("InterruptedException");
+                    }
+                    var = var.replace("\n", "").replace("\r", "");
+                    varParse = var.split("\\s+");
+                    if(varParse.length > 1) {
+                        System.out.println("\t" + var.substring(0,var.indexOf(";")));
+                        DICTIONARY.add("\t" + (var.substring(0,var.indexOf(";")).trim()));
+                    }
+                } while (varParse.length > 1);
+            }
+        } while(funcParse.length > 1);
+        i = 1;
+        do {
+            ProcessBuilder builder3 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl_stmt[" + i + "])\"", xpathName);
+            try {
+                Process p = builder3.start();
+                p.waitFor();
+                var = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            var = var.replace("\n", "").replace("\r", "");
+            varParse = var.split("\\s+");
+            i++;
+            if(varParse.length > 1){
+                System.out.println(var.substring(0,var.indexOf(";")));
+                boolean dupe = false;
+                for(int k = 0;k<DICTIONARY.size();k++){
+                    if(DICTIONARY.get(k)==(var.substring(0,var.indexOf(";")).trim())){
+                        dupe = true;
+                        break;
                     }
                 }
-                if(paramNum >= LONGPARAMTHRESHOLD){
-                    DICTIONARY.add(function.substring(0,function.indexOf("{")));
-                }
+                if(dupe) { continue; }
+                DICTIONARY.add((var.substring(0,var.indexOf(";")).trim()));
             }
-
-        } while(outputParse.length > 1);
+        }while(varParse.length > 1);
     }
     static class Smell {
         int lineNum;
@@ -1302,7 +1346,7 @@ public class Main {
             int index = 0; // keeps track of line number inside array
             for (Smell smell : smells) {
                 if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
-                    && smell.getCode().equals(temp)) {
+                        && smell.getCode().equals(temp)) {
                     index++;
                     if (index >= array.size()) {
                         return -1;
