@@ -806,7 +806,7 @@ public class Main {
             output = output.replace("\n", "").replace("\r", "");
             outputParse = output.split("\\s+");
             i++;
-            if(outputParse.length > 1){
+            if(outputParse.length > 2){
                 char[] outChars = output.toCharArray();
                 int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")).trim(), SmellEnum.longParam, SMELLS);
                 if(paramNum >= LONGPARAMTHRESHOLD){
