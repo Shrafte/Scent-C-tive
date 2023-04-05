@@ -201,15 +201,16 @@ public class Main {
         int lineNum;
 
         File bufferFile = new File(bufferFileName);
-        File functionFile = new File("functions.txt");
+        File functionNamingFile = new File("functionNaming.txt");
 
         // creating file with all function names
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:function/src:name\"", xpathName);
         builder.redirectOutput(bufferFile);
         builder.redirectError(new File("out.txt"));
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
-        builder2.redirectOutput(functionFile);
+        builder2.redirectOutput(functionNamingFile);
         builder2.redirectError(new File("out.txt"));
+
         try {
             Process p = builder.start();
             p.waitFor();
@@ -223,7 +224,7 @@ public class Main {
 
         // putting all function names into arraylist
         try {
-            Scanner scan = new Scanner(functionFile);
+            Scanner scan = new Scanner(functionNamingFile);
             while (scan.hasNextLine()) {
                 buffer = scan.nextLine();
                 functionList.add(buffer);
@@ -243,7 +244,7 @@ public class Main {
         }
 
         bufferFile.delete();
-        functionFile.delete();
+        functionNamingFile.delete();
     }
     private static void variableNamingHandler(String fileName) {
         int i = 0;
@@ -264,6 +265,7 @@ public class Main {
         ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:unit/src:name)\"", bufferFileName);
         builder2.redirectOutput(varFile);
         builder2.redirectError(new File("out.txt"));
+
         try {
             Process p = builder.start();
             p.waitFor();
@@ -288,6 +290,8 @@ public class Main {
         }
 
         fullLines = findVarLine(fileName);
+
+
         // checking variable name for camel case
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
         for (i = 0; i < varList.size(); i++) {
@@ -893,7 +897,7 @@ public class Main {
         int j = 1;
         ArrayList<String> nonGlobalVariables = new ArrayList<>();
         do{
-            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:block_content/src:decl_stmt[" + j + "])\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:block_content/src:decl_stmt[" + j + "]/src:decl)\"", xpathName);
             try {
                 Process p = builder2.start();
                 p.waitFor();
