@@ -10,7 +10,7 @@ import java.util.Scanner;
 public class Main {
     static int LONGPARAMTHRESHOLD = 6;
 
-    static int LONGFUNCTIONTHRESHOLD = 50;
+    static int LONGFUNCTIONTHRESHOLD = 20;
     static boolean[] settings = new boolean[20];
     static ArrayList<Smell> SMELLS = new ArrayList<>();
     static SourceBSTree tree;
@@ -126,7 +126,7 @@ public class Main {
             noBlockLoopHandler(args[0]);
         }
         if(settings[7]){                //Long parameter list
-            //longParamHandler(args[0]);
+            longParamHandler(args[0]);
         }
         if(settings[8]){                //Long functions
             longFuncHandler(args[0]);
@@ -794,12 +794,15 @@ public class Main {
         String xpathName = filename + ".xml";
         String output = "";
         String function = "";
+        String temp = "";
         String[] outputParse;
         int i = 1;
         do{
             int paramNum = 0;
             ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "]/src:parameter_list)\"", xpathName);
             ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
+            ProcessBuilder builder3 = new ProcessBuilder("srcml", "--xpath", "\"count(//src:function[" + i + "]/src:parameter_list/src:parameter)\"", xpathName);
+
             builder.redirectError(new File("out.txt"));
             try {
                 Process p = builder.start();
@@ -808,6 +811,10 @@ public class Main {
                 p = builder2.start();
                 p.waitFor();
                 function = new String(p.getInputStream().readAllBytes());
+                p = builder3.start();
+                p.waitFor();
+                temp = new String(p.getInputStream().readAllBytes()).trim();
+                paramNum = Integer.parseInt(temp);
             } catch (IOException e) {
                 System.out.println("IOException");
             } catch (InterruptedException e) {
@@ -816,20 +823,16 @@ public class Main {
             output = output.replace("\n", "").replace("\r", "");
             outputParse = output.split("\\s+");
             i++;
-            if(outputParse.length > 1){
+            if(outputParse.length > 2){
                 char[] outChars = output.toCharArray();
-                for (char outChar : outChars) {
-                    if (outChar == ',' || outChar == ')') {
-                        paramNum++;
-                    }
-                }
-                int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")), SmellEnum.longParam, SMELLS);
+                int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")).trim(), SmellEnum.longParam, SMELLS);
                 if(paramNum >= LONGPARAMTHRESHOLD){
-                    addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")),lineNum);
+                    addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")).trim(),lineNum);
                 }
             }
-        } while(outputParse.length > 1);
+        } while(outputParse.length > 2);
     }
+
 
     public static void embeddedIncrementHandler(String filename){
         String xpathName = filename + ".xml";
@@ -901,7 +904,7 @@ public class Main {
         int j = 1;
         ArrayList<String> nonGlobalVariables = new ArrayList<>();
         do{
-            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:block_content/src:decl_stmt[" + j + "])\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:block_content/src:decl_stmt[" + j + "]/src:decl)\"", xpathName);
             try {
                 Process p = builder2.start();
                 p.waitFor();
@@ -919,7 +922,7 @@ public class Main {
         } while(outputParse.length > 0);
 
         do{
-            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(/src:decl_stmt[" + i + "]/src:decl)\"", xpathName);
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl_stmt[" + i + "]/src:decl)\"", xpathName);
             builder.redirectError(new File("out.txt"));
             try {
                 Process p = builder.start();
