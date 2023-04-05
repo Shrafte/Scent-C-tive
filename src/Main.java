@@ -9,8 +9,9 @@ import java.util.Scanner;
 
 public class Main {
     static int LONGPARAMTHRESHOLD = 6;
-    static int LONGFUNCTIONTHRESHOLD = 20;
-    static boolean[] settings = new boolean[19];
+
+    static int LONGFUNCTIONTHRESHOLD = 50;
+    static boolean[] settings = new boolean[20];
     static ArrayList<Smell> SMELLS = new ArrayList<>();
     static SourceBSTree tree;
     public static void main(String[] args) throws IOException {
@@ -134,6 +135,7 @@ public class Main {
             deadCodeHandler(args[0]);
         }
         if(settings[10]){                //Embedded increment/decrement
+            embeddedIncrementHandler(args[0]);
         }
         if(settings[11]){                //Conditional complexity
         }
@@ -155,6 +157,9 @@ public class Main {
             functionNamingHandler(args[0]);
         }
         if(settings[18]){               //Multiple variable declarations on one line
+        }
+        if(settings[19]){               //Global Variables
+            globalVariableHandler(args[0]);
         }
     }
 
@@ -502,6 +507,7 @@ public class Main {
         amountLines = inFunction = bracketCounter = numBracketsOnLine = stopCounting = lineNum = 0;
         String lineToSend, prevLine;
         lineToSend = prevLine = "";
+
         try {
             Scanner scan = new Scanner(functionFile);
             while (scan.hasNextLine()) {
@@ -825,16 +831,42 @@ public class Main {
         } while(outputParse.length > 1);
     }
 
+    public static void embeddedIncrementHandler(String filename){
+        String xpathName = filename + ".xml";
+        String output = "";
+        String function = "";
+        String[] outputParse;
+        int i = 1;
+        do{
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:expr_stmt[" + i + "]/src:expr/src:call/src:argument_list/src:argument/src:expr/src:operator)\"", xpathName);
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:expr_stmt[" + i + "]/src:expr/src:call)\"", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+                p = builder2.start();
+                p.waitFor();
+                function = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            output = output.replace("\n", "").replace("\r", "");
+            outputParse = function.split("\\s+");
+            i++;
+            int lineNum = tree.findSingle(function.substring(0,function.length()-1), SmellEnum.embed, SMELLS);
+            if(output.length() == 2 && (output.equals("++") || output.equals("--"))) {
+                //SMELLS.add(new Smell("Embedded Increment/Decrement", function.substring(0,function.length()-1)));
+                addSmell("Embedded Increment/Decrement",function.substring(0,function.length()-1),lineNum);
+            }
+        } while(outputParse.length > 0);
+    }
+
     public static void gotoHandler(String filename) throws IOException {
         String xpathName = filename + ".xml";
-////        Process process;
-////        process = Runtime.getRuntime().exec(filename);
-//        try {
-//            process.waitFor();
-//        } catch (InterruptedException e) {
-//            System.out.println("Error: " + e.getMessage());
-//        }
-        //System.out.println("Running XPath: Finding Dead Code");
+
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//src:goto",xpathName);
         builder.redirectOutput(new File("results.txt"));
         builder.redirectError(new File("out.txt"));
@@ -847,14 +879,6 @@ public class Main {
     }
     public static void deadCodeHandler(String filename) throws IOException {
         String xpathName = filename + ".xml";
-//        Process process;
-//        process = Runtime.getRuntime().exec(xpathName);
-//        try {
-//            process.waitFor();
-//        } catch (InterruptedException e) {
-//            System.out.println("Error: " + e.getMessage());
-//        }
-        //System.out.println("Running XPath: Finding Dead Code");
         ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//block_content/decl_stmt[not(following::*[1]/use | following::*[1]/call)]/decl/name/text() | //block_content/expr_stmt[not(following::*[1]/use | following::*[1]/call)]/expr/*[1]/name/text()",xpathName);
         builder.redirectOutput(new File("results.txt"));
         builder.redirectError(new File("out.txt"));
@@ -864,6 +888,71 @@ public class Main {
         }catch (InterruptedException e){
             System.out.print("");
         }
+
+
+    }
+    public static void globalVariableHandler(String filename){
+        String xpathName = filename + ".xml";
+        String output = "";
+        String function = "";
+        String[] outputParse;
+        String[] outputParse2;
+        int i = 1;
+        int j = 1;
+        ArrayList<String> nonGlobalVariables = new ArrayList<>();
+        do{
+            ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:block_content/src:decl_stmt[" + j + "])\"", xpathName);
+            try {
+                Process p = builder2.start();
+                p.waitFor();
+                function = new String(p.getInputStream().readAllBytes());
+            }  catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            outputParse = function.split("\\s+");
+            if(function.length() > 0) {
+                nonGlobalVariables.add(function);
+            }
+            j++;
+        } while(outputParse.length > 0);
+
+        do{
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(/src:decl_stmt[" + i + "]/src:decl)\"", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.println("IOException");
+            } catch (InterruptedException e) {
+                System.out.println("InterruptedException");
+            }
+            outputParse2 = output.split("\\s+");
+            i++;
+            boolean valid = true;
+            if(output.length() > 0) {
+                for(int x = 0;x < nonGlobalVariables.size();x++){
+                    //exclude constants
+                    if(output.length()>5) {
+                        if (output.substring(0, 5).equals("const")) {
+                            valid = false;
+                            break;
+                        }
+                    }
+                    if(output.equals(nonGlobalVariables.get(x))) {
+                        valid = false;
+                        break;
+                    }
+                }
+                int lineNum = tree.findSingle(output.substring(0,output.length()-1), SmellEnum.globalVar, SMELLS);
+                if(valid) {
+                    addSmell(SmellEnum.globalVar,output.substring(0,output.length()-1),lineNum);
+                }
+            }
+        } while(outputParse2.length > 0);
     }
 
     static class Smell {
@@ -1237,7 +1326,7 @@ public class Main {
             for(int i = 0; i < smells.size() && index < array.get(0).size(); i++) {
                 if(smells.get(i).getSmellType().equals(smellType)) {
                     while(index < array.get(0).size() && smells.get(i).getLineNum() > array.get(0).get(index)
-                            && smells.get(i).getCode().equals(tempStr)) {
+                            && (smells.get(i).getCode().contains(tempStr) || smells.get(i).getCode().equals(tempStr))) {
                         index++;
                     }
                     if(index >= array.get(0).size()) {continue;}
@@ -1281,5 +1370,6 @@ public class Main {
         public static final String varName = "Bad variable name";
         public static final String funcName = "Bad function name";
         public static final String multVar = "Multi-variable declaration";
+        public static final String globalVar = "Global Variable";
     }
 }
