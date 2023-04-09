@@ -15,11 +15,16 @@ public class Main {
     static ArrayList<Smell> SMELLS = new ArrayList<>();
     static SourceBSTree tree;
     public static void main(String[] args) throws IOException {
+        // error handling
+        if(args.length != 1) {
+            System.out.println("use 'Java Main <single-source-code-file>'");
+            System.exit(-1);
+        }
+
         String fullStr = "srcml " + args[0] + " -o " + args[0] + ".xml";
         settingsHandler(args);
         String[] strArray;
         strArray = fullStr.split("\\s+");
-        System.out.println("\nCreating " + args[0] + " to " + args[0] + ".xml\n");
         File fileToDelete = new File (args[0] + ".xml");
         Process process;
         process = Runtime.getRuntime().exec(strArray);
@@ -32,7 +37,7 @@ public class Main {
 
         smellHandler(args);
         printSmells();
-        //fileToDelete.delete();
+        fileToDelete.delete();
     }
     public static void settingsHandler(String[] args){
         Arrays.fill(settings, true);
@@ -1292,13 +1297,12 @@ public class Main {
                 usedContains = true;
             }
             int index = 0; // keeps track of line number inside array
-            for (Smell smell : smells) {
-                if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
-                        && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
+            for (int x = 0; x < SMELLS.size() && index < array.size(); x++) {
+                if (SMELLS.get(x).getSmellType().equals(smellType) && SMELLS.get(x).getLineNum() == array.get(index)
+                        && (SMELLS.get(x).getCode().contains(temp) || SMELLS.get(x).getCode().equals(temp))) {
                     index++;
                     if (index >= array.size()) {
                         found = false;
-                        break;
                     }
                 }
             }
@@ -1314,9 +1318,9 @@ public class Main {
                 }
 
                 index = 0;
-                for (Smell smell : smells) {
-                    if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
-                            && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
+                for (int x = 0; x < SMELLS.size() && index < array.size(); x++) {
+                    if (SMELLS.get(x).getSmellType().equals(smellType) && SMELLS.get(x).getLineNum() == array.get(index)
+                            && (SMELLS.get(x).getCode().contains(temp) || SMELLS.get(x).getCode().equals(temp))) {
                         index++;
                         if (index >= array.size()) {
                             return -1;
