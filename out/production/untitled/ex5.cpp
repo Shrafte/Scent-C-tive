@@ -7,6 +7,7 @@ using namespace std;
 
 
 int subSum(int n, int arr[]) {
+    int a;
     int W = 1000; // sum we are trying to add to
     int subset[n+1][W+1]; // 2D array to hold summed values
 
@@ -29,6 +30,7 @@ int subSum(int n, int arr[]) {
 };
 
 int subSumApprox(int n, int arr[]) {
+    int a;
     sort(arr, arr + n, greater<int>()); // sort array descending order
     int sum = 1000; // target sum
     int curr = 0; // current sum of numbers at a time
@@ -49,6 +51,7 @@ int subSumApprox(int n, int arr[]) {
 
 
 int main() {
+    int a;
     int arr[20]; // array to hold random numbers
 
     srand (time(NULL)); // to initialize random seed
