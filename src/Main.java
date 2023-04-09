@@ -1287,6 +1287,7 @@ public class Main {
                     index++;
                     if (index >= array.size()) {
                         found = false;
+                        break;
                     }
                 }
             }
