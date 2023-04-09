@@ -288,7 +288,7 @@ public class Main {
         }
 
         fullLines = findVarLine(fileName);
-
+        ArrayList<Integer> pastLineNumbers = new ArrayList<>();
 
         // checking variable name for camel case
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
@@ -301,12 +301,15 @@ public class Main {
             }
             if (!varList.get(i).matches(camelCase) && !varList.get(i).equals("argc") && !varList.get(i).equals("argv") && !varList.get(i).equals("i")) {
                 lineNum = tree.findSingle(fullLines.get(i), SmellEnum.varName, SMELLS);
-                addSmell(SmellEnum.varName, fullLines.get(i), lineNum);
+                if (!pastLineNumbers.contains(lineNum) && lineNum != -1) {
+                    addSmell(SmellEnum.varName, fullLines.get(i), lineNum);
+                }
+                pastLineNumbers.add(lineNum);
             }
         }
 
-        bufferFile.delete();
-        varFile.delete();
+        //bufferFile.delete();
+        //varFile.delete();
     }
 
     private static ArrayList<String> findVarLine(String fileName) {
@@ -321,10 +324,10 @@ public class Main {
         File varLinesFile = new File("varLines.txt");
 
         // creating file with all variable declaration lines
-        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl\"", xpathName);
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl_stmt | //src:parameter_list\"", xpathName);
         builder.redirectOutput(bufferFile);
         builder.redirectError(new File("out.txt"));
-        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl)\"", bufferFileName);
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl_stmt | //src:parameter_list)\"", bufferFileName);
         builder2.redirectOutput(varLinesFile);
         builder2.redirectError(new File("out.txt"));
 
@@ -339,13 +342,29 @@ public class Main {
             System.out.print("");
         }
 
+        int numCommas = 0;
+
         // adding the variable declaration lines to an arraylist
         try {
             Scanner scan = new Scanner(varLinesFile);
             while (scan.hasNextLine()) {
                 buffer = scan.nextLine();
+                if (buffer.equals("()")) {
+                    continue;
+                }
                 if (!buffer.equals("void")) {
-                    fullDecLine.add(buffer);
+                    if (buffer.contains(",")) { // for multiple var declarations
+                        for (i = 0; i < buffer.length(); i++) { // count commas in line
+                            if (buffer.charAt(i) == ',') {
+                                numCommas++;
+                            }
+                        }
+                        for (i = 0; i <= numCommas; i++) {  // add numCommas + 1 amount of buffer
+                            fullDecLine.add(buffer);
+                        }
+                    } else {
+                        fullDecLine.add(buffer);
+                    }
                 }
             }
             scan.close();
@@ -353,16 +372,8 @@ public class Main {
             e.printStackTrace();
         }
 
-        // for multiple var declarations on one line
-        for (i = 0; i < fullDecLine.size(); i++) {
-            if (!fullDecLine.get(i).contains(" ")) {
-                fullDecLine.set(i, fullDecLine.get(i-1) + ", " + fullDecLine.get(i));
-            }
-        }
 
-        // try to return one smell for a single line with multi line variables
-
-        varLinesFile.delete();
+        // varLinesFile.delete();
 
         return fullDecLine;
     }
@@ -1283,7 +1294,7 @@ public class Main {
             int index = 0; // keeps track of line number inside array
             for (Smell smell : smells) {
                 if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
-                    && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
+                        && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
                     index++;
                     if (index >= array.size()) {
                         found = false;
