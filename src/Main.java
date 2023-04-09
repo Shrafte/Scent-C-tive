@@ -10,7 +10,7 @@ import java.util.Scanner;
 public class Main {
     static int LONGPARAMTHRESHOLD = 6;
 
-    static int LONGFUNCTIONTHRESHOLD = 50;
+    static int LONGFUNCTIONTHRESHOLD = 20;
     static boolean[] settings = new boolean[20];
     static ArrayList<Smell> SMELLS = new ArrayList<>();
     static SourceBSTree tree;
@@ -126,7 +126,7 @@ public class Main {
             noBlockLoopHandler(args[0]);
         }
         if(settings[7]){                //Long parameter list
-            //longParamHandler(args[0]);
+            longParamHandler(args[0]);
         }
         if(settings[8]){                //Long functions
             longFuncHandler(args[0]);
@@ -288,7 +288,7 @@ public class Main {
         }
 
         fullLines = findVarLine(fileName);
-
+        ArrayList<Integer> pastLineNumbers = new ArrayList<>();
 
         // checking variable name for camel case
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
@@ -301,12 +301,15 @@ public class Main {
             }
             if (!varList.get(i).matches(camelCase) && !varList.get(i).equals("argc") && !varList.get(i).equals("argv") && !varList.get(i).equals("i")) {
                 lineNum = tree.findSingle(fullLines.get(i), SmellEnum.varName, SMELLS);
-                addSmell(SmellEnum.varName, fullLines.get(i), lineNum);
+                if (!pastLineNumbers.contains(lineNum) && lineNum != -1) {
+                    addSmell(SmellEnum.varName, fullLines.get(i), lineNum);
+                }
+                pastLineNumbers.add(lineNum);
             }
         }
 
-        bufferFile.delete();
-        varFile.delete();
+        //bufferFile.delete();
+        //varFile.delete();
     }
 
     private static ArrayList<String> findVarLine(String fileName) {
@@ -321,10 +324,10 @@ public class Main {
         File varLinesFile = new File("varLines.txt");
 
         // creating file with all variable declaration lines
-        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl\"", xpathName);
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl_stmt | //src:parameter_list\"", xpathName);
         builder.redirectOutput(bufferFile);
         builder.redirectError(new File("out.txt"));
-        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl)\"", bufferFileName);
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl_stmt | //src:parameter_list)\"", bufferFileName);
         builder2.redirectOutput(varLinesFile);
         builder2.redirectError(new File("out.txt"));
 
@@ -339,13 +342,29 @@ public class Main {
             System.out.print("");
         }
 
+        int numCommas = 0;
+
         // adding the variable declaration lines to an arraylist
         try {
             Scanner scan = new Scanner(varLinesFile);
             while (scan.hasNextLine()) {
                 buffer = scan.nextLine();
+                if (buffer.equals("()")) {
+                    continue;
+                }
                 if (!buffer.equals("void")) {
-                    fullDecLine.add(buffer);
+                    if (buffer.contains(",")) { // for multiple var declarations
+                        for (i = 0; i < buffer.length(); i++) { // count commas in line
+                            if (buffer.charAt(i) == ',') {
+                                numCommas++;
+                            }
+                        }
+                        for (i = 0; i <= numCommas; i++) {  // add numCommas + 1 amount of buffer
+                            fullDecLine.add(buffer);
+                        }
+                    } else {
+                        fullDecLine.add(buffer);
+                    }
                 }
             }
             scan.close();
@@ -353,16 +372,8 @@ public class Main {
             e.printStackTrace();
         }
 
-        // for multiple var declarations on one line
-        for (i = 0; i < fullDecLine.size(); i++) {
-            if (!fullDecLine.get(i).contains(" ")) {
-                fullDecLine.set(i, fullDecLine.get(i-1) + ", " + fullDecLine.get(i));
-            }
-        }
 
-        // try to return one smell for a single line with multi line variables
-
-        varLinesFile.delete();
+        // varLinesFile.delete();
 
         return fullDecLine;
     }
@@ -794,12 +805,15 @@ public class Main {
         String xpathName = filename + ".xml";
         String output = "";
         String function = "";
+        String temp = "";
         String[] outputParse;
         int i = 1;
         do{
             int paramNum = 0;
             ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "]/src:parameter_list)\"", xpathName);
             ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:function[" + i + "])\"", xpathName);
+            ProcessBuilder builder3 = new ProcessBuilder("srcml", "--xpath", "\"count(//src:function[" + i + "]/src:parameter_list/src:parameter)\"", xpathName);
+
             builder.redirectError(new File("out.txt"));
             try {
                 Process p = builder.start();
@@ -808,6 +822,10 @@ public class Main {
                 p = builder2.start();
                 p.waitFor();
                 function = new String(p.getInputStream().readAllBytes());
+                p = builder3.start();
+                p.waitFor();
+                temp = new String(p.getInputStream().readAllBytes()).trim();
+                paramNum = Integer.parseInt(temp);
             } catch (IOException e) {
                 System.out.println("IOException");
             } catch (InterruptedException e) {
@@ -818,17 +836,12 @@ public class Main {
             i++;
             if(outputParse.length > 1){
                 char[] outChars = output.toCharArray();
-                for (char outChar : outChars) {
-                    if (outChar == ',' || outChar == ')') {
-                        paramNum++;
-                    }
-                }
-                int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")), SmellEnum.longParam, SMELLS);
+                int lineNum = tree.findSingle(function.substring(0,function.indexOf("{")).trim(), SmellEnum.longParam, SMELLS);
                 if(paramNum >= LONGPARAMTHRESHOLD){
-                    addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")),lineNum);
+                    addSmell(SmellEnum.longParam, function.substring(0,function.indexOf("{")).trim(),lineNum);
                 }
             }
-        } while(outputParse.length > 1);
+        } while(outputParse.length > 2);
     }
 
     public static void embeddedIncrementHandler(String filename){
@@ -1218,12 +1231,10 @@ public class Main {
             return Math.max(left, right);
         }
         private void findLine(Node node, ArrayList<Integer> arr, String target) {
-            if(node == NIL) {
-                return;
-            }
+            if(node == NIL) {return;}
             if(target.equals(node.getLine())) {
                 findLine(node.getLeft(), arr, target);
-                arr.add(node.getLineNum());
+                linearAdd(arr, node.getLineNum());
                 findLine(node.getRight(), arr, target);
             }
             else {
@@ -1237,25 +1248,25 @@ public class Main {
 
         private void containsLine(Node node, ArrayList<Integer> arr, String substr, String smellType) {
             if(node == NIL) {return;}
+            containsLine(node.getLeft(), arr, substr, smellType);
             if(node.getLine().contains(substr)) {
-                if(smellType.equals(SmellEnum.magicNum)) {
-                    int index = node.getLine().indexOf("int ");
+                linearAdd(arr, node.getLineNum());
+            }
+            containsLine(node.getRight(), arr, substr, smellType);
+        }
 
-                    // if it doesn't follow a declaratory int type, then we're good
-                    if (index == -1 || index + 4 != node.getLine().indexOf(substr)) {
-                        containsLine(node.getLeft(), arr, substr, smellType);
-                        arr.add(node.getLineNum());
-                        containsLine(node.getRight(), arr, substr, smellType);
+        private void linearAdd(ArrayList<Integer> arr, int lineNum) {
+            if(arr.isEmpty() || arr.get(arr.size() - 1) <= lineNum) {arr.add(lineNum);}
+            else {
+                boolean placeFound = false;
+                for (int index = arr.size() - 1; index >= 0 && !placeFound; index--) {
+                    if(arr.get(index) < lineNum) {
+                        arr.add(index + 1, lineNum);
+                        placeFound = true;
                     }
                 }
-                else {
-                    containsLine(node.getLeft(), arr, substr, smellType);
-                    arr.add(node.getLineNum());
-                    containsLine(node.getRight(), arr, substr, smellType);
-                }
+                if(!placeFound) {arr.add(0, lineNum);}
             }
-            containsLine(node.getLeft(), arr, substr, smellType);
-            containsLine(node.getRight(), arr, substr, smellType);
         }
 
         /**
@@ -1267,6 +1278,8 @@ public class Main {
          * @return line number of the single line offending smell, or -1 if a line number could not be found
          */
         public int findSingle(String target, String smellType, ArrayList<Smell> smells) {
+            boolean usedContains = false;
+            boolean found = true;
             ArrayList<Integer> array = new ArrayList<Integer>();
             String temp = target.trim();
             findLine(root, array, temp);
@@ -1275,18 +1288,45 @@ public class Main {
                 if(array.size() == 0) {
                     return -1;
                 }
+                usedContains = true;
             }
             int index = 0; // keeps track of line number inside array
             for (Smell smell : smells) {
                 if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
-                    && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
+                        && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
                     index++;
                     if (index >= array.size()) {
-                        return -1;
+                        found = false;
+                        break;
                     }
                 }
             }
-            return array.get(index);
+
+            if(found) {
+                return array.get(index);
+            }
+            else if(!usedContains) {
+                array.clear();
+                containsLine(root, array, temp, smellType);
+                if(array.size() == 0) {
+                    return -1;
+                }
+
+                index = 0;
+                for (Smell smell : smells) {
+                    if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
+                            && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
+                        index++;
+                        if (index >= array.size()) {
+                            return -1;
+                        }
+                    }
+                }
+                return array.get(index);
+            }
+            else {
+                return -1;
+            }
         }
 
         /**
