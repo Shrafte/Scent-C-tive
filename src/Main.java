@@ -1270,6 +1270,8 @@ public class Main {
          * @return line number of the single line offending smell, or -1 if a line number could not be found
          */
         public int findSingle(String target, String smellType, ArrayList<Smell> smells) {
+            boolean usedContains = false;
+            boolean found = true;
             ArrayList<Integer> array = new ArrayList<Integer>();
             String temp = target.trim();
             findLine(root, array, temp);
@@ -1278,6 +1280,7 @@ public class Main {
                 if(array.size() == 0) {
                     return -1;
                 }
+                usedContains = true;
             }
             int index = 0; // keeps track of line number inside array
             for (Smell smell : smells) {
@@ -1285,11 +1288,32 @@ public class Main {
                     && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
                     index++;
                     if (index >= array.size()) {
-                        return -1;
+                        found = false;
                     }
                 }
             }
-            return array.get(index);
+
+            if(found) {return array.get(index);}
+            else if(found && !usedContains) {
+                array.clear();
+                containsLine(root, array, temp, smellType);
+                if(array.size() == 0) {
+                    return -1;
+                }
+
+                index = 0;
+                for (Smell smell : smells) {
+                    if (smell.getSmellType().equals(smellType) && smell.getLineNum() == array.get(index)
+                            && (smell.getCode().contains(temp) || smell.getCode().equals(temp))) {
+                        index++;
+                        if (index >= array.size()) {
+                            return -1;
+                        }
+                    }
+                }
+                return array.get(index);
+            }
+            else {return -1;}
         }
 
         /**
