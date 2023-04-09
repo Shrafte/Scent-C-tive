@@ -32,7 +32,7 @@ public class Main {
 
         smellHandler(args);
         printSmells();
-        fileToDelete.delete();
+        //fileToDelete.delete();
     }
     public static void settingsHandler(String[] args){
         Arrays.fill(settings, true);
@@ -1221,12 +1221,10 @@ public class Main {
             return Math.max(left, right);
         }
         private void findLine(Node node, ArrayList<Integer> arr, String target) {
-            if(node == NIL) {
-                return;
-            }
+            if(node == NIL) {return;}
             if(target.equals(node.getLine())) {
                 findLine(node.getLeft(), arr, target);
-                arr.add(node.getLineNum());
+                linearAdd(arr, node.getLineNum());
                 findLine(node.getRight(), arr, target);
             }
             else {
@@ -1240,25 +1238,25 @@ public class Main {
 
         private void containsLine(Node node, ArrayList<Integer> arr, String substr, String smellType) {
             if(node == NIL) {return;}
+            containsLine(node.getLeft(), arr, substr, smellType);
             if(node.getLine().contains(substr)) {
-                if(smellType.equals(SmellEnum.magicNum)) {
-                    int index = node.getLine().indexOf("int ");
+                linearAdd(arr, node.getLineNum());
+            }
+            containsLine(node.getRight(), arr, substr, smellType);
+        }
 
-                    // if it doesn't follow a declaratory int type, then we're good
-                    if (index == -1 || index + 4 != node.getLine().indexOf(substr)) {
-                        containsLine(node.getLeft(), arr, substr, smellType);
-                        arr.add(node.getLineNum());
-                        containsLine(node.getRight(), arr, substr, smellType);
+        private void linearAdd(ArrayList<Integer> arr, int lineNum) {
+            if(arr.isEmpty() || arr.get(arr.size() - 1) <= lineNum) {arr.add(lineNum);}
+            else {
+                boolean placeFound = false;
+                for (int index = arr.size() - 1; index >= 0 && !placeFound; index--) {
+                    if(arr.get(index) < lineNum) {
+                        arr.add(index + 1, lineNum);
+                        placeFound = true;
                     }
                 }
-                else {
-                    containsLine(node.getLeft(), arr, substr, smellType);
-                    arr.add(node.getLineNum());
-                    containsLine(node.getRight(), arr, substr, smellType);
-                }
+                if(!placeFound) {arr.add(0, lineNum);}
             }
-            containsLine(node.getLeft(), arr, substr, smellType);
-            containsLine(node.getRight(), arr, substr, smellType);
         }
 
         /**
@@ -1293,8 +1291,10 @@ public class Main {
                 }
             }
 
-            if(found) {return array.get(index);}
-            else if(found && !usedContains) {
+            if(found) {
+                return array.get(index);
+            }
+            else if(!usedContains) {
                 array.clear();
                 containsLine(root, array, temp, smellType);
                 if(array.size() == 0) {
@@ -1313,7 +1313,9 @@ public class Main {
                 }
                 return array.get(index);
             }
-            else {return -1;}
+            else {
+                return -1;
+            }
         }
 
         /**
