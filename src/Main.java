@@ -32,7 +32,7 @@ public class Main {
 
         smellHandler(args);
         printSmells();
-        //fileToDelete.delete();
+        fileToDelete.delete();
     }
     public static void settingsHandler(String[] args){
         Arrays.fill(settings, true);
