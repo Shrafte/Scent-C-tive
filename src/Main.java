@@ -16,7 +16,7 @@ public class Main {
     static SourceBSTree tree;
     public static void main(String[] args) throws IOException {
         // error handling
-        if(args.length < 1) {
+        if(args.length != 1) {
             System.out.println("use 'Java Main <single-source-code-file>'");
             System.exit(-1);
         }
@@ -41,7 +41,7 @@ public class Main {
     }
     public static void settingsHandler(String[] args){
         Arrays.fill(settings, true);
-        for(int i = 0;i<args.length;i++){
+        for(int i = 0;i<args.length-1;i++){
             switch(args[i]){
                 case "-g":              //Goto statements
                     settings[2] = false;
@@ -162,6 +162,7 @@ public class Main {
             functionNamingHandler(args[0]);
         }
         if(settings[18]){               //Multiple variable declarations on one line
+            multiVarDec(args[0]);
         }
         if(settings[19]){               //Global Variables
             globalVariableHandler(args[0]);
@@ -734,7 +735,7 @@ public class Main {
         int iterator = 1;
         int lineNum = -1;
         String[] arguments = {  "(//src:expr_stmt[src:expr/src:literal[@type='number']])",
-                                "(//src:condition[src:expr/src:literal[@type='number']])"};
+                "(//src:condition[src:expr/src:literal[@type='number']])"};
 
         for (String s : arguments) {
             iterator = 1;
@@ -885,30 +886,121 @@ public class Main {
 
     public static void gotoHandler(String filename) throws IOException {
         String xpathName = filename + ".xml";
+        String output = "";
+        int index;
+        int iterator = 1;
+        do {
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"string(//src:goto[" + iterator + "])\"", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.print("IOExcpetion detected");
+            } catch (InterruptedException e) {
+                System.out.print("InterruptedException detected");
+            }
+            output = output.strip();
+            if(output != "") {
+                index = tree.findSingle(output, SmellEnum.gotoStmt, SMELLS);
+                addSmell(SmellEnum.gotoStmt, output, index);
+            }
+            iterator++;
+        }while (output.length() > 0);
+    }
 
-        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//src:goto",xpathName);
-        builder.redirectOutput(new File("results.txt"));
-        builder.redirectError(new File("out.txt"));
-        try {
-            Process p = builder.start();
-            p.waitFor();
-        }catch (InterruptedException e){
-            System.out.print("");
-        }
+    private static ArrayList<String> dcHelper(String filename) throws IOException {
+        String xpathName = filename + ".xml";
+        String ind = "";
+        ArrayList<String> output = new ArrayList<String>();
+        int index;
+        int iterator = 1;
+
+        do {
+            ProcessBuilder helper = new ProcessBuilder("srcml", "--xpath", "string((//src:expr_stmt[src:expr/src:call/src:name])["+iterator+"])", xpathName);
+            helper.redirectError(new File("out.txt"));
+            try {
+                Process p = helper.start();
+                p.waitFor();
+                ind = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.print("IOExcepetion detected");
+            } catch (InterruptedException e) {
+                System.out.print("InterruptedException detected");
+            }
+            ind = ind.strip();
+
+            if(ind != "") {
+                ind = ind.substring(0, ind.indexOf("("));
+                System.out.println("adding " + ind + " to func list");
+                output.add(ind);
+            }
+            iterator++;
+        }while(ind.length() > 2);
+        return output;
     }
     public static void deadCodeHandler(String filename) throws IOException {
         String xpathName = filename + ".xml";
-        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "//block_content/decl_stmt[not(following::*[1]/use | following::*[1]/call)]/decl/name/text() | //block_content/expr_stmt[not(following::*[1]/use | following::*[1]/call)]/expr/*[1]/name/text()",xpathName);
-        builder.redirectOutput(new File("results.txt"));
-        builder.redirectError(new File("out.txt"));
-        try {
-            Process p = builder.start();
-            p.waitFor();
-        }catch (InterruptedException e){
-            System.out.print("");
-        }
+        String output = "";
+        ArrayList<String> funcCalls = dcHelper(filename);
+        boolean isDead = true;
+        int index;
+        int iterator = 1;
+        do {
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "string((//src:function/src:name)["+iterator+"])", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.print("IOExcepetion detected");
+            } catch (InterruptedException e) {
+                System.out.print("InterruptedException detected");
+            }
+            output = output.strip();
+            isDead = true;
+            //System.out.println("test" + output);
+            for(String call : funcCalls){
+                if(call.compareTo(output) == 0) {
+                    isDead = false;
+                }
+            }
+            if(isDead && output != "" && output.compareTo("main") != 0) {
+                index = tree.findSingle(output, SmellEnum.deadFunc, SMELLS);
+                addSmell(SmellEnum.deadFunc, output, index);
+            }
+            iterator++;
+        }while (output.length() > 0);
+    }
 
+    public static void multiVarDec(String filename) {
+        String xpathName = filename + ".xml";
+        String output = "";
+        boolean isDead = true;
+        int index;
+        int iterator = 1;
+        do {
+            ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "string((//src:decl_stmt[src:decl/src:type[@ref='prev']])["+iterator+"])", xpathName);
+            builder.redirectError(new File("out.txt"));
+            try {
+                Process p = builder.start();
+                p.waitFor();
+                output = new String(p.getInputStream().readAllBytes());
+            } catch (IOException e) {
+                System.out.print("IOExcepetion detected");
+            } catch (InterruptedException e) {
+                System.out.print("InterruptedException detected");
+            }
+            output = output.strip();
 
+            if(output != "") {
+                index = tree.findSingle(output, SmellEnum.multVar, SMELLS);
+                addSmell(SmellEnum.multVar, output, index);
+            }
+            iterator++;
+        }while (output.length() > 0);
     }
     public static void globalVariableHandler(String filename){
         String xpathName = filename + ".xml";
