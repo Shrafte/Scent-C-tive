@@ -298,7 +298,8 @@ public class Main {
 
         // checking variable name for camel case
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
-        for (i = 0; i < varList.size() && i < fullLines.size(); i++) {
+
+        for (i = 0; i < varList.size(); i++) {
             if (varList.get(i).contains("[")) {
                 varList.set(i, varList.get(i).substring(0, varList.get(i).indexOf("[")));
             }
@@ -314,8 +315,8 @@ public class Main {
             }
         }
 
-        //bufferFile.delete();
-        //varFile.delete();
+        bufferFile.delete();
+        varFile.delete();
     }
 
     private static ArrayList<String> findVarLine(String fileName) {
@@ -330,10 +331,10 @@ public class Main {
         File varLinesFile = new File("varLines.txt");
 
         // creating file with all variable declaration lines
-        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl_stmt | //src:parameter_list\"", xpathName);
+        ProcessBuilder builder = new ProcessBuilder("srcml", "--xpath", "\"//src:decl_stmt | //src:parameter_list | //src:control/src:init\"", xpathName);
         builder.redirectOutput(bufferFile);
         builder.redirectError(new File("out.txt"));
-        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl_stmt | //src:parameter_list)\"", bufferFileName);
+        ProcessBuilder builder2 = new ProcessBuilder("srcml", "--xpath", "\"string(//src:decl_stmt | //src:parameter_list | //src:control/src:init)\"", bufferFileName);
         builder2.redirectOutput(varLinesFile);
         builder2.redirectError(new File("out.txt"));
 
@@ -379,7 +380,7 @@ public class Main {
         }
 
 
-        // varLinesFile.delete();
+        varLinesFile.delete();
 
         return fullDecLine;
     }
@@ -933,7 +934,6 @@ public class Main {
 
             if(ind != "") {
                 ind = ind.substring(0, ind.indexOf("("));
-                System.out.println("adding " + ind + " to func list");
                 output.add(ind);
             }
             iterator++;
