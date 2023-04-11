@@ -1,10 +1,10 @@
+// func naming, var naming, long func, magic numbers
 #include <iostream>
 #include <cstring>
 using namespace std;
 
 int wrong() {
     int light;
-    int one, two, three;
     double catDog;
 
 
@@ -26,7 +26,7 @@ int wrong() {
 
 }
 
-void correctFunc(int x, int a) {
+void correctFunc(int xYea, int aWesome) {
     cout << "This function is named correctly" << endl;
 
 }
@@ -37,11 +37,10 @@ int main() {
     int light;
     numone = 3;
     numTwo = 6;
-    goto lab1;
-    goto lab2;
-    label: lab1;
-    label: lab2;
+    int jim, kimLee, limBo;
+
     correctFunc(numone, numTwo);
+    wrong();
 
     return 0;
 }
