@@ -298,7 +298,7 @@ public class Main {
 
         // checking variable name for camel case
         String camelCase = "([a-z]+[A-Z]+\\w+)+";
-        for (i = 0; i < varList.size(); i++) {
+        for (i = 0; i < varList.size() && i < fullLines.size(); i++) {
             if (varList.get(i).contains("[")) {
                 varList.set(i, varList.get(i).substring(0, varList.get(i).indexOf("[")));
             }
@@ -1348,7 +1348,19 @@ public class Main {
             if(node == NIL) {return;}
             containsLine(node.getLeft(), arr, substr, smellType);
             if(node.getLine().contains(substr)) {
-                linearAdd(arr, node.getLineNum());
+                if(smellType.equals(SmellEnum.magicNum)) {
+                    boolean isDecl = false;
+                    String[] declStmt = {"int " + substr,
+                                         "double " + substr,
+                                         "float " + substr,
+                                         "long " + substr};
+
+                    for(int i = 0; i < declStmt.length; i++) {
+                        if(node.getLine().contains(declStmt[i])) {isDecl = true;}
+                    }
+                    if(!isDecl){linearAdd(arr, node.getLineNum());}
+                }
+                else {linearAdd(arr, node.getLineNum());}
             }
             containsLine(node.getRight(), arr, substr, smellType);
         }
