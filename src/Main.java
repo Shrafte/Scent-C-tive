@@ -16,7 +16,7 @@ public class Main {
     static SourceBSTree tree;
     public static void main(String[] args) throws IOException {
         // error handling
-        if(args.length != 1) {
+        if(args.length < 1) {
             System.out.println("use 'Java Main <single-source-code-file>'");
             System.exit(-1);
         }
