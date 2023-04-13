@@ -41,7 +41,7 @@ public class Main {
     }
     public static void settingsHandler(String[] args){
         Arrays.fill(settings, true);
-        for(int i = 0;i<args.length-1;i++){
+        for(int i = 0;i<args.length;i++){
             switch(args[i]){
                 case "-g":              //Goto statements
                     settings[2] = false;
@@ -359,7 +359,7 @@ public class Main {
                 if (buffer.equals("()")) {
                     continue;
                 }
-                if (!buffer.equals("void")) {
+                if (!buffer.equals("void") && !buffer.equals("")) {
                     if (buffer.contains(",")) { // for multiple var declarations
                         for (i = 0; i < buffer.length(); i++) { // count commas in line
                             if (buffer.charAt(i) == ',') {
