@@ -1,7 +1,10 @@
 Scent-C-Tive
 ---------------------------------------------------------------
 
-Purpose: To find code smells within C/C++ source code that compiles using a terminal tool
+Purpose: To find code smells within source code that compiles using a terminal tool
+
+Languages tested and compatible: C, C++, Java
+Languages that may be compatible but are untested: C#
 
 What is a code smell?
 For our purposes, it is a bad coding practice that hurt the Security, Readability, or maintainability of code.
@@ -9,12 +12,12 @@ For our purposes, it is a bad coding practice that hurt the Security, Readabilit
 To Use:
 ------------------------------------------------------------------
 1. Download srcML from http://www.srcml.org/. It converts source code into a tagged xml file. This project is reliant on srcML.
-2. Download Main.java in the src file, put it in any folder you wish, and compile it using any java compiler.
+2. Download SCT.java in the src file, put it in any folder you wish, and compile it using any java compiler.
 3. Put the desired C/C++ source file into that folder.
-4. In the terminal, navigate to that folder and run the command: "Java Main {Source-Code} {Tags}...".
+4. In the terminal, navigate to that folder and run the command: "Java SCT {Source-Code} {Tags}...".
 
 *IMPORTANT*
-Make sure input C/C++ code is compilable. Inputting C/C++ code that does not compile may lead to unknown behavior.
+Make sure input source code is compilable. Inputting source code that does not compile may lead to unknown behavior.
 
 What smells are being searched for
 -------------------------------------------------------
