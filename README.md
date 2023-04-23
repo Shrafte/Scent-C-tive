@@ -4,6 +4,7 @@ Scent-C-Tive
 Purpose: To find code smells within source code that compiles using a terminal tool
 
 Languages tested and compatible: C, C++, Java
+
 Languages that may be compatible but are untested: C#
 
 What is a code smell?
